@@ -18,13 +18,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.artha.kirana.ui.entry.SaleEntryScreen
 import com.artha.kirana.ui.home.HomeScreen
 import com.artha.kirana.ui.inventory.InventoryScreen
+import com.artha.kirana.ui.khata.KhataPartyDetail
 import com.artha.kirana.ui.khata.KhataScreen
 import com.artha.kirana.ui.pnl.PnlScreen
 
@@ -36,6 +39,7 @@ enum class TopDest(val route: String, val label: String, val icon: ImageVector) 
 }
 
 const val ROUTE_SALE_ENTRY = "sale_entry"
+const val ROUTE_KHATA_DETAIL = "khata" // full pattern: khata/{partyId}
 
 @Composable
 fun ArthaApp() {
@@ -82,7 +86,13 @@ fun ArthaApp() {
         ) {
             composable(TopDest.Home.route) { HomeScreen() }
             composable(TopDest.Inventory.route) { InventoryScreen() }
-            composable(TopDest.Khata.route) { KhataScreen() }
+            composable(TopDest.Khata.route) {
+                KhataScreen(onParty = { id -> navController.navigate("$ROUTE_KHATA_DETAIL/$id") })
+            }
+            composable(
+                route = "$ROUTE_KHATA_DETAIL/{partyId}",
+                arguments = listOf(navArgument("partyId") { type = NavType.LongType }),
+            ) { KhataPartyDetail() }
             composable(TopDest.Pnl.route) { PnlScreen() }
             composable(ROUTE_SALE_ENTRY) {
                 SaleEntryScreen(onDone = { navController.popBackStack() })
