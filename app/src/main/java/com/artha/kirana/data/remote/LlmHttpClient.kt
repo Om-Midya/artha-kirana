@@ -12,6 +12,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,24 +37,39 @@ class LlmHttpClient @Inject constructor(
         false
     }
 
-    /** Sends a system+user turn and returns the assistant content, or throws [LlmUnavailableException]. */
+    /**
+     * Sends a system+user turn and returns the assistant content, or throws [LlmUnavailableException].
+     * Retries a few times — llama-server occasionally returns a transient 500 under load, and a
+     * stateless completion is safe to retry; this keeps voice/typed parsing from bouncing to manual.
+     */
     suspend fun chat(system: String, user: String): String {
-        val response: ChatCompletionResponse = try {
-            client.post("$baseUrl/v1/chat/completions") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    ChatCompletionRequest(
-                        messages = listOf(
-                            ChatMessage(role = "system", content = system),
-                            ChatMessage(role = "user", content = user),
-                        ),
-                    ),
-                )
-            }.body()
-        } catch (t: Throwable) {
-            throw LlmUnavailableException(t)
+        var lastError: Throwable? = null
+        repeat(MAX_ATTEMPTS) { attempt ->
+            try {
+                val response: ChatCompletionResponse =
+                    client.post("$baseUrl/v1/chat/completions") {
+                        contentType(ContentType.Application.Json)
+                        setBody(
+                            ChatCompletionRequest(
+                                messages = listOf(
+                                    ChatMessage(role = "system", content = system),
+                                    ChatMessage(role = "user", content = user),
+                                ),
+                            ),
+                        )
+                    }.body()
+                return response.choices.firstOrNull()?.message?.content
+                    ?: throw LlmUnavailableException(null)
+            } catch (t: Throwable) {
+                lastError = t
+                if (attempt < MAX_ATTEMPTS - 1) delay(RETRY_DELAY_MS)
+            }
         }
-        return response.choices.firstOrNull()?.message?.content
-            ?: throw LlmUnavailableException(null)
+        throw LlmUnavailableException(lastError)
+    }
+
+    private companion object {
+        const val MAX_ATTEMPTS = 3
+        const val RETRY_DELAY_MS = 300L
     }
 }
