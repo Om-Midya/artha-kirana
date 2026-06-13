@@ -10,6 +10,7 @@ class SalesRepositoryImpl @Inject constructor(
     private val dao: SalesDao,
 ) : SalesRepository {
     override suspend fun logSale(sale: SaleEntity): Long = dao.insert(sale)
+    override suspend fun updateSale(sale: SaleEntity) = dao.update(sale)
     override fun observeSince(start: Long): Flow<List<SaleEntity>> = dao.observeSince(start)
     override fun revenueBetween(start: Long, end: Long): Flow<Double> = dao.revenueBetween(start, end)
     override fun cashBetween(start: Long, end: Long): Flow<Double> = dao.cashBetween(start, end)

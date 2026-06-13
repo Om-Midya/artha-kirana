@@ -3,6 +3,7 @@ package com.artha.kirana.data.db.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.artha.kirana.data.db.entity.SaleEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,6 +11,9 @@ import kotlinx.coroutines.flow.Flow
 interface SalesDao {
     @Insert
     suspend fun insert(sale: SaleEntity): Long
+
+    @Update
+    suspend fun update(sale: SaleEntity)
 
     @Query("SELECT * FROM sales WHERE timestamp >= :start ORDER BY timestamp DESC")
     fun observeSince(start: Long): Flow<List<SaleEntity>>
