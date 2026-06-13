@@ -10,6 +10,7 @@ plugins {
 android {
     namespace = "com.artha.kirana"
     compileSdk = 36
+    ndkVersion = "27.1.12297006"
 
     defaultConfig {
         applicationId = "com.artha.kirana"
@@ -21,6 +22,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "LLM_BASE_URL", "\"http://127.0.0.1:8080\"")
         buildConfigField("boolean", "VOICE_ENABLED", "true")
+
+        // whisper.cpp native ASR — the iQOO is arm64-v8a only (keeps the native build fast).
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {
