@@ -12,12 +12,20 @@ adb devices                          # iQOO 15 = 10BFBG0CEL001DB
 adb shell am start -n com.artha.kirana/.MainActivity
 ```
 
-## State (branch `main`)
+## State
 
+> ⚠️ **Active work is on branch `feat/assistant-layer`, NOT merged to `main`.** Two features built there this session (Assistant + editable recent entries + LLM preload), awaiting human on-device walkthroughs, then merge. `git checkout feat/assistant-layer` to continue.
+
+**On `main` (merged):**
 - ✅ **Phase 0/1/2 done & merged.** Sale loop (type Hindi → on-device parse → confirm → Room → reactive Home, §18 = 5/5). Inventory (add/edit/restock + low-stock highlight), Khata (party list/detail + record-payment), P&L (today/week/month tabs + Vico chart), low-stock `InventoryAlertWorker`. Final review clean; unit tests green.
 - 🤝 **Phase 3 (OCR/bill scanning) — a collaborator owns this.** Don't touch ML Kit / CameraX / `BillParser` / `BillScanScreen`.
-- 🟢 **Phase 4 (voice) — working on-device.** whisper.cpp (vendored `app/src/main/cpp/whisper/`, arm64, **`-O3` forced in CMake** — debug installs default to `-O0` = ~30x slower) + **fine-tuned `whisper-hindi-small` ggml q5_1** (accurate Hindi). Model lives in the app external-files dir (`adb push … /sdcard/Android/data/com.artha.kirana/files/ggml-hindi-small-q5_1.bin`; **NOT** /sdcard/Download — scoped storage blocks the app from reading it). Mic in Sale Entry: record → whisper `hi` → `HindiNumbers.normalize` (number-words→digits) → Qwen w/ `json_schema` grammar → confirm. Conversion recipe + model cache: see `docs/STATUS.md` + memory. TODO: Hindi TTS, animation, vernacular toggle.
-- ⬜ Phase 5 (Claude market insights, needs API key), Phase 6 (demo hardening). Possible new direction: conversational/agentic command interface over the existing use-cases (under discussion).
+- 🟢 **Phase 4 (voice) — working on-device.** whisper.cpp (vendored `app/src/main/cpp/whisper/`, arm64, **`-O3` forced in CMake** — debug installs default to `-O0` = ~30x slower) + **fine-tuned `whisper-hindi-small` ggml q5_1** (accurate Hindi). Model in app external-files dir (`adb push … /sdcard/Android/data/com.artha.kirana/files/ggml-hindi-small-q5_1.bin`; **NOT** /sdcard/Download — scoped storage). Mic in Sale Entry: record → whisper `hi` → `HindiNumbers.normalize` → Qwen w/ `json_schema` grammar → confirm. TODO: Hindi TTS, animation, vernacular toggle.
+- ⬜ Phase 5 (Claude market insights, needs API key), Phase 6 (demo hardening).
+
+**On `feat/assistant-layer` (built this session, reviewed, unit tests green, installed on iQOO — awaiting human UI walkthrough before merge):**
+- 🟢 **Assistant layer (conversational tab).** Center protruding gold FAB tab → chat thread → **stateless two-stage intent router**: `IntentRouter.classify()` (enum `json_schema`, **10/10 live on-device**) → dispatch to existing use-cases. 3 intents: `log_sale` (reuses `ParseSaleEntryUseCase`), `record_payment` (`LlmEngine.parsePayment`), `query_pnl` (`PnlPeriodDetector` + `GetPnlSummaryUseCase`). Inline confirm cards reuse `EditableEntryCard`; mutations write via `LogSaleUseCase`/`applyRepayment` only on Confirm. Voice input reuses the whisper mic; replies text-only. LLM is **preloaded on screen open** (`warmUpLlm` primes the intent prefix cache). Spec/plan: `docs/superpowers/{specs,plans}/2026-06-14-artha-assistant*`.
+- 🟢 **Editable "Recent entries" (Home).** Tap a recent sale → bottom sheet (reuses `EditableEntryCard`) → `EditSaleUseCase` reverses the old sale's inventory+khata effects and applies the edited ones (clean khata rewrite via `KhataRepository.reverseSaleEffect`), edit-in-place (same id/timestamp). Spec/plan: `…2026-06-14-artha-edit-recent-entries*`.
+- 🔜 **NEXT (handed off, not started): data-layer restructure** — auto-price from inventory `sellPrice`, tighter linking/FKs, analytics-friendly schema, "customer/shop profile" question. Brief + open questions: **`docs/superpowers/specs/2026-06-14-data-layer-direction.md`**. Start there.
 
 ## Architecture (one paragraph)
 
@@ -27,6 +35,8 @@ Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlo
 
 - **Toolchain pinned: AGP 8.13 / Gradle 8.13 / JDK 17.** AGP 9 breaks Hilt+KSP+Compose. Don't "upgrade." Vico pinned **2.1.3** (Kotlin-2.0 line; 3.x needs Kotlin 2.3).
 - **llama-server must run ON the iQOO** (`CLAUDE.md` §1) — never a tethered Mac. The start command is `adb shell` from the Mac, but the process is phone-side and survives unplug. Phase 6 gate: airplane-mode + unplug → a sale still parses. Stop: `adb shell "pkill -f llama-server"`. Logs: `/sdcard/Download/llama-server.log`.
+- **The server is NOT persistent** — it was observed dying between sessions (process gone, `/health` → 000). Re-run `./scripts/start-llama-server.sh` (cold mmap ~10–20s). Note: that launcher script polls `/health` then can linger as a Mac-side shell after success — the phone server is detached and unaffected; `pkill -f start-llama-server.sh` cleans up the launcher without stopping the model. A tether-free persistent start (Termux/launcher) is still a Phase 6 item.
+- **Keep `IntentRouter.INTENT_SYSTEM_PROMPT` in sync with `scripts/validate-intent-prompt.py`** (same discipline as the sale prompt). Intent router currently 10/10 live.
 - **Validate prompt changes** with `scripts/validate-sale-prompt.py` (`adb forward tcp:8080 tcp:8080` first; sends Devanagari over HTTP). Keep its `SYSTEM_PROMPT` synced with `LlmEngine.SALE_SYSTEM_PROMPT`.
 - **Room is v2 + `fallbackToDestructiveMigration`** — schema changes wipe dev data.
 - **Driving Compose via adb is flaky.** `ModalBottomSheet` auto-scrolls on keyboard open, so coordinate `input tap`+`input text` land in the wrong field; uiautomator dumps come back empty. Prefer hand-testing UI; let the human drive data entry.
@@ -37,12 +47,13 @@ Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlo
 | Path | What |
 |---|---|
 | `…/data/remote/` | `LlmHttpClient`, `ClaudeApiClient` (P5), DTOs, `NetworkModule` |
-| `…/data/llm/` | `LlmEngine` (system prompt), `SaleParser` |
+| `…/data/llm/` | `LlmEngine` (sale + payment prompts/grammars), `SaleParser`, `PaymentParser`, `IntentRouter` |
 | `…/data/db/` | Room entities, DAOs, `ArthaDatabase` (v2) |
 | `…/data/worker/`, `…/data/notification/` | `InventoryAlertWorker`, `NotificationHelper` |
-| `…/domain/` | repository interfaces, use-cases, models (`PnlSummary`, etc.) |
-| `…/ui/` | `ArthaApp` (nav), `home/ entry/ inventory/ khata/ pnl/`, theme |
-| `scripts/` | `start-llama-server.sh`, `validate-sale-prompt.py` |
+| `…/domain/usecase/` | `ParseSaleEntryUseCase`, `LogSaleUseCase`, `EditSaleUseCase`, `RouteAssistantUseCase`, `GetPnlSummaryUseCase`, `PnlPeriodDetector`, `parseLeadingQty` |
+| `…/domain/` | repository interfaces, models (`SaleEntry`, `AssistantIntent`, `AssistantResult`, `PnlSummary`) |
+| `…/ui/` | `ArthaApp` (nav + center FAB), `assistant/` (chat), `common/EditableEntryCard`, `home/ entry/ inventory/ khata/ pnl/`, theme |
+| `scripts/` | `start-llama-server.sh`, `validate-sale-prompt.py`, `validate-intent-prompt.py` |
 | `docs/` | `STATUS.md`, `demo-runbook.md`, `superpowers/specs`, `superpowers/plans` |
 
 ## Device
