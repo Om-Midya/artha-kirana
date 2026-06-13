@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.artha.kirana.domain.model.PnlPeriod
 import com.artha.kirana.domain.model.PnlSummary
 import com.artha.kirana.domain.model.SaleEntry
 import com.artha.kirana.ui.common.EditableEntryCard
@@ -141,7 +142,12 @@ fun PnlAnswerBubble(summary: PnlSummary) {
         colors = CardDefaults.cardColors(),
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("आज का हिसाब", fontWeight = FontWeight.Bold)
+            val header = when (summary.period) {
+                PnlPeriod.TODAY -> "आज का हिसाब"
+                PnlPeriod.THIS_WEEK -> "इस हफ़्ते का हिसाब"
+                PnlPeriod.THIS_MONTH -> "इस महीने का हिसाब"
+            }
+            Text(header, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text("बिक्री (Revenue): ₹${summary.grossRevenue.toLong()}")
             Text("मुनाफा (Profit): ₹${summary.grossProfit.toLong()}", color = AccentGreen)
