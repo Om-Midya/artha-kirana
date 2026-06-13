@@ -20,6 +20,8 @@ class ParseSaleEntryUseCase @Inject constructor(
         // Convert Hindi number-words to digits first — the 3B reliably reads digits but flubs
         // spoken Hindi numbers (पचास→40) when a quantity number is nearby.
         engine.parseSale(HindiNumbers.normalize(text)).map { entries ->
+            // One inventory lookup per parsed entry (sequential). Fine for the 1–few items a
+            // single utterance yields; revisit if batches grow large. TODO(data-layer): batch if needed.
             entries.map { e ->
                 val item = e.item?.let { inventory.findByName(it) }
                 e.copy(amount = computeAutoPrice(e, item))

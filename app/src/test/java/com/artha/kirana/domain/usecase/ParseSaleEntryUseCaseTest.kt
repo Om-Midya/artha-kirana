@@ -8,6 +8,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ParseSaleEntryUseCaseTest {
@@ -25,7 +26,7 @@ class ParseSaleEntryUseCaseTest {
 
         val result = useCase("do kilo chawal").getOrThrow()
 
-        assertEquals(80.0, result.single().amount)
+        assertEquals(80.0, result.single().amount!!, 0.001)
     }
 
     @Test
@@ -37,6 +38,18 @@ class ParseSaleEntryUseCaseTest {
 
         val result = useCase("do kilo chawal sau rupaye").getOrThrow()
 
-        assertEquals(100.0, result.single().amount)
+        assertEquals(100.0, result.single().amount!!, 0.001)
+    }
+
+    @Test
+    fun leavesAmountNullWhenItemNotInInventory() = runTest {
+        coEvery { engine.parseSale(any()) } returns Result.success(
+            listOf(SaleEntry(item = "mystery_item", qty = "2", amount = null, type = "cash", party = null)),
+        )
+        coEvery { inventory.findByName("mystery_item") } returns null
+
+        val result = useCase("some input").getOrThrow()
+
+        assertNull(result.single().amount)
     }
 }

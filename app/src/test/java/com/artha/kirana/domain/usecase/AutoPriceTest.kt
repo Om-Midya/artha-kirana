@@ -15,12 +15,14 @@ class AutoPriceTest {
 
     @Test
     fun explicitAmountAlwaysWins() {
-        assertEquals(80.0, computeAutoPrice(entry(amount = 80.0, qty = "2 kg"), item(40.0)))
+        assertEquals(80.0, computeAutoPrice(entry(amount = 80.0, qty = "2 kg"), item(40.0))!!, 0.001)
+        // wins even when no item resolves (short-circuit before inventory access)
+        assertEquals(80.0, computeAutoPrice(entry(amount = 80.0, qty = null), null)!!, 0.001)
     }
 
     @Test
     fun computesFromSellPriceTimesQtyWhenAmountNull() {
-        assertEquals(80.0, computeAutoPrice(entry(amount = null, qty = "2 kg"), item(40.0)))
+        assertEquals(80.0, computeAutoPrice(entry(amount = null, qty = "2 kg"), item(40.0))!!, 0.001)
     }
 
     @Test
