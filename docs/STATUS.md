@@ -10,7 +10,7 @@
 | **Phase 1 — Core sale loop** | ✅ Done & device-verified (incl. Task 1.7 §18 = 5/5) |
 | **Phase 2 — Inventory / Khata / P&L** | ✅ Done & merged to `main` (13/13 tasks, final review clean, unit tests green). Device-verified screens + record-payment + worker pipeline. Owner-verifying two §15 visuals (low-stock notification fire/clear; LLM-sale decrement/COGS). |
 | Phase 3 — Bill scanning (OCR) | 🤝 In progress by a collaborator — **not this agent's scope** (do not touch ML Kit/CameraX/BillParser). |
-| **Phase 4 — Voice + vernacular** | 🔵 Starting (whisper.cpp JNI). NDK 27.1.12297006 + CMake 3.22.1 present. Gated on SPIKE B (build whisper.cpp + transcribe Hindi clip offline). |
+| **Phase 4 — Voice + vernacular** | 🔵 In progress. **SPIKE B native build PASSES** — whisper.cpp v1.7.4 vendored, compiles for arm64-v8a, `libwhisper_android.so` + ggml/whisper packed in APK. Mic wired into Sale Entry (record → whisper `hi` → input → Parse). **Pending on-device:** push model + speak a Hindi clip to confirm transcription <2s. TTS + vernacular toggle not yet built. |
 | Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
 | Phase 6 — Demo hardening | ⬜ Not started |
 
@@ -29,6 +29,12 @@
 - **Low-stock worker:** `InventoryAlertWorker` (`@HiltWorker`) fires and returns SUCCESS via `HiltWorkerFactory` (logcat-confirmed); WorkManager Hilt `Configuration.Provider` wired, default initializer removed, no double-init crash. Low-stock detection works on-device (`soap` shows "· low!" via the same predicate the worker's `lowStock()` query uses). **The visible notification fire + auto-clear-on-restock is owner-verified separately:** force-running the *periodic* job via `adb cmd jobscheduler run` is unreliable on OriginOS (job id rotates per cycle; WM logs stripped). For a deterministic demo/verify trigger, add a debug-only expedited `OneTimeWorkRequest` of the same worker (Phase 6 hardening). Notify/cancel code is trivial + verbatim from the plan.
 - **Manual §15 checks owned by the user:** (A) log an LLM sale of a stocked item → verify inventory decrement + non-zero COGS; (B) low-stock notification fire + auto-clear on restock.
 - All unit tests green (TimeRange, RevenueBucketing, GetPnlSummaryUseCase + Phase 1 suite).
+
+### Phase 4 voice — SPIKE B status (2026-06-13)
+- **Native build PASSES** (Mac, no device): `./gradlew :app:assembleDebug` compiles vendored whisper.cpp v1.7.4 (`app/src/main/cpp/whisper/`) + `jni.c` → `libwhisper_android.so` (+ libwhisper/libggml*) for arm64-v8a, packaged in the APK. See `app/src/main/cpp/README.md`.
+- **Wired:** `WhisperLib` (JNI) → `WhisperContext` → `WhisperEngine` (lazy singleton, loads `/sdcard/Download/ggml-tiny.bin`) + `AudioRecorder` (16 kHz mono → float). Mic button in Sale Entry: record → transcribe `hi` → drops text into the input → existing Parse path.
+- **NOT yet done — needs the device (owner):** (1) `adb push /tmp/ggml-tiny.bin /sdcard/Download/ggml-tiny.bin` (74 MB multilingual tiny, already downloaded); (2) `./gradlew :app:installDebug`; (3) New Sale → mic → grant RECORD_AUDIO → speak `दो किलो चावल अस्सी रुपये` → stop → confirm recognisable Hindi text appears in <2s. **Pass/fail = SPIKE B gate.** If Hindi accuracy is poor, swap to `ggml-base`.
+- **Remaining Phase 4 after spike passes:** `TextToSpeechManager` (Hindi TTS "Hear summary"), recording animation polish, vernacular language toggle, mark voice entries `inputMethod="voice"`.
 
 ## Spikes
 
