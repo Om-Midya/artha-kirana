@@ -10,16 +10,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -36,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +44,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import com.artha.kirana.domain.model.SaleEntry
+import com.artha.kirana.ui.common.EditableEntryCard
 import com.artha.kirana.ui.theme.AccentGreen
 import com.artha.kirana.ui.theme.AccentRed
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -230,56 +227,5 @@ private fun ManualSection(
             modifier = Modifier.weight(1f),
             colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
         ) { Text("Save") }
-    }
-}
-
-@Composable
-private fun EditableEntryCard(entry: SaleEntry, onChange: (SaleEntry) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp)) {
-            OutlinedTextField(
-                value = entry.item ?: "",
-                onValueChange = { onChange(entry.copy(item = it.ifBlank { null })) },
-                label = { Text("Item · वस्तु") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = entry.qty ?: "",
-                    onValueChange = { onChange(entry.copy(qty = it.ifBlank { null })) },
-                    label = { Text("Qty") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = entry.amount?.toLong()?.toString() ?: "",
-                    onValueChange = { onChange(entry.copy(amount = it.toDoubleOrNull())) },
-                    label = { Text("₹ Amount") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("cash", "credit", "repayment").forEach { t ->
-                    FilterChip(
-                        selected = entry.type == t,
-                        onClick = { onChange(entry.copy(type = t)) },
-                        label = { Text(t) },
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = entry.party ?: "",
-                onValueChange = { onChange(entry.copy(party = it.ifBlank { null })) },
-                label = { Text("Party · ग्राहक (optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-            )
-        }
     }
 }
