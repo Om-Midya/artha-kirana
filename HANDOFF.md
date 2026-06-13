@@ -23,7 +23,7 @@ Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlo
 - ✅ **Phase 0** (foundation + SPIKE A/C) and **Phase 1** (full sale loop, §18 = 5/5) — done, device-verified.
 - ⏳ **SPIKE B** (whisper.cpp on-device ASR) — voice is now **whisper.cpp via JNI** (updated `CLAUDE.md` §8), not Android SpeechRecognizer. Spike = build whisper.cpp for Android + transcribe a Hindi clip offline. Gates Phase 4.
 - ⬜ **Next: Phase 2** (Inventory / Khata / P&L). Plan + roadmap: `docs/superpowers/plans/2026-06-13-artha-phase0-phase1.md`. Use a **Kotlin-2.0-compatible Vico** (NOT 3.1.0 — needs Kotlin 2.3).
-- Work on branch `feat/phase0-foundation` (9 commits off `main`).
+- Work on branch `feat/phase0-foundation` (off `main`).
 
 ## Gotchas (read before changing things)
 
