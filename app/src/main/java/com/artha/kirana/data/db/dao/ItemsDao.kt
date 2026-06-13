@@ -27,6 +27,9 @@ interface ItemsDao {
     @Query("UPDATE items SET qtyInStock = qtyInStock - :qty WHERE id = :id")
     suspend fun decrementStock(id: Long, qty: Double)
 
+    @Query("UPDATE items SET qtyInStock = qtyInStock + :qty WHERE id = :id")
+    suspend fun incrementStock(id: Long, qty: Double)
+
     @Query("SELECT * FROM items WHERE reorderThreshold > 0 AND qtyInStock < reorderThreshold")
     suspend fun lowStock(): List<ItemEntity>
 
