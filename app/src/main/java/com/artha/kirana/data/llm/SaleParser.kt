@@ -37,15 +37,19 @@ class SaleParser @Inject constructor() {
         return try {
             json.decodeFromString(SaleParseDto.serializer(), jsonStr).entries.map {
                 SaleEntry(
-                    item = it.item,
-                    qty = it.qty,
+                    item = it.item.clean(),
+                    qty = it.qty.clean(),
                     amount = it.amount,
-                    type = it.type,
-                    party = it.party,
+                    type = it.type.clean() ?: "cash",
+                    party = it.party.clean(),
                 )
             }
         } catch (t: Throwable) {
             emptyList()
         }
     }
+
+    /** The model sometimes emits the literal strings "null"/"none" or blanks instead of JSON null. */
+    private fun String?.clean(): String? =
+        this?.trim()?.takeUnless { it.isEmpty() || it.equals("null", true) || it.equals("none", true) }
 }

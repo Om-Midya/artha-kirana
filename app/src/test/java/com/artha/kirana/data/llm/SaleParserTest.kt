@@ -40,6 +40,15 @@ class SaleParserTest {
     }
 
     @Test
+    fun normalizesLiteralNullStringsToNull() {
+        val raw = """{"entries":[{"item":"cheeni","qty":"2 kilo","amount":40,"type":"cash","party":"null"}]}"""
+        val result = parser.parse(raw)
+        assertEquals(1, result.size)
+        assertNull(result[0].party)
+        assertEquals("cheeni", result[0].item)
+    }
+
+    @Test
     fun coercesNullTypeToCash() {
         val raw = """{"entries":[{"item":"x","qty":"1","amount":10,"type":null,"party":null}]}"""
         val result = parser.parse(raw)
