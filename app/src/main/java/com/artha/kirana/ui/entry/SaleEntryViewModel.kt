@@ -61,6 +61,12 @@ class SaleEntryViewModel @Inject constructor(
 
     private val recording = AtomicBoolean(false)
 
+    /** Pre-load the whisper model so the first transcription isn't slowed by the model load. */
+    fun warmUpVoice() {
+        if (!whisper.voiceEnabled) return
+        viewModelScope.launch { runCatching { whisper.warmUp() } }
+    }
+
     /** Tap to start recording; tap again to stop → transcribe. */
     fun toggleVoice() {
         when (_voice.value) {

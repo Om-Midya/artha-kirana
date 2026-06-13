@@ -49,7 +49,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
-    params.single_segment = false;
+    params.single_segment = true;    // short sale utterances → one segment, faster
 
     whisper_reset_timings(context);
     if (whisper_full(context, params, audio, n) != 0) {

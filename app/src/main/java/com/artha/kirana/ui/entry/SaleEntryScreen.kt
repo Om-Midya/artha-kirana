@@ -64,6 +64,9 @@ fun SaleEntryScreen(
     val voice by vm.voice.collectAsStateWithLifecycle()
     val micPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
 
+    // Pre-load the whisper model as soon as the screen opens (first transcription stays snappy).
+    LaunchedEffect(Unit) { vm.warmUpVoice() }
+
     // Saved -> pop back to Home (which updates live via Flow).
     LaunchedEffect(Unit) {
         vm.events.collect { onDone() }
