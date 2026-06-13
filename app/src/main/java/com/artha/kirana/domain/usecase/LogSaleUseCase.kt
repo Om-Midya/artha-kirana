@@ -28,6 +28,7 @@ class LogSaleUseCase @Inject constructor(
         val saleId = sales.logSale(
             SaleEntity(
                 itemId = item?.id,
+                itemName = entry.item,
                 qtySold = qty,
                 amount = entry.amount ?: 0.0,
                 type = entry.type,

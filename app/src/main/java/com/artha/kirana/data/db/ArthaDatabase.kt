@@ -21,7 +21,7 @@ import com.artha.kirana.data.db.entity.SaleEntity
         KhataEntity::class,
         KhataTransactionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class ArthaDatabase : RoomDatabase() {

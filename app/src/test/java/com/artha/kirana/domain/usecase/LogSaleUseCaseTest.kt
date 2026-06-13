@@ -33,7 +33,8 @@ class LogSaleUseCaseTest {
             sales.logSale(
                 match {
                     it.type == "credit" && it.amount == 80.0 && it.party == "Ramesh" &&
-                        it.itemId == 7L && it.qtySold == 2.0 && it.inputMethod == "typed"
+                        it.itemId == 7L && it.itemName == "rice" && it.qtySold == 2.0 &&
+                        it.inputMethod == "typed"
                 },
             )
         }

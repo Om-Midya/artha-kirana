@@ -83,14 +83,14 @@ private fun SaleRow(sale: SaleEntity) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    sale.party ?: (sale.type.replaceFirstChar { it.uppercase() }),
+                    sale.itemName ?: "Sale",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    sale.type,
+                    saleSubtitle(sale),
                     style = MaterialTheme.typography.bodySmall,
                     color = when (sale.type) {
                         "credit" -> AccentRed
@@ -106,4 +106,15 @@ private fun SaleRow(sale: SaleEntity) {
             )
         }
     }
+}
+
+/** "Cash sale" / "Credit · Ramesh" / "Repayment · Ramesh". Customer appended only when present. */
+private fun saleSubtitle(sale: SaleEntity): String {
+    val typeLabel = when (sale.type) {
+        "cash" -> "Cash sale"
+        "credit" -> "Credit"
+        "repayment" -> "Repayment"
+        else -> sale.type.replaceFirstChar { it.uppercase() }
+    }
+    return sale.party?.let { "$typeLabel · $it" } ?: typeLabel
 }
