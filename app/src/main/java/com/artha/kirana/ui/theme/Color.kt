@@ -2,10 +2,14 @@ package com.artha.kirana.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Artha brand palette (CLAUDE-1.md §13)
+val BrandGold = Color(0xFFE6AC00)
+val BrandDark = Color(0xFF1A1A1A)
+val AccentGreen = Color(0xFF2D7D46)
+val AccentRed = Color(0xFFC0392B)
+val AccentBlue = Color(0xFF1A5276)
+val SurfaceDark = Color(0xFF1E1E1E)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Neutral on-colors
+val OnGold = Color(0xFF1A1A1A)
+val OnDark = Color(0xFFF5F5F5)
