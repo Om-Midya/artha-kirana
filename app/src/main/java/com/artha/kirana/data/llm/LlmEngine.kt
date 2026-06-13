@@ -20,12 +20,21 @@ import javax.inject.Singleton
 class LlmEngine @Inject constructor(
     private val client: LlmHttpClient,
     private val saleParser: SaleParser,
+    private val paymentParser: PaymentParser,
 ) {
     suspend fun health(): Boolean = client.health()
 
     suspend fun parseSale(text: String): Result<List<SaleEntry>> = try {
         val content = client.chat(SALE_SYSTEM_PROMPT, text, SALE_RESPONSE_FORMAT)
         Result.success(saleParser.parse(content))
+    } catch (e: LlmUnavailableException) {
+        Result.failure(e)
+    }
+
+    /** Extracts khata-repayment args ({party, amount}) from already-normalized text. */
+    suspend fun parsePayment(text: String): Result<ParsedPayment> = try {
+        val content = client.chat(PAYMENT_SYSTEM_PROMPT, text, PAYMENT_RESPONSE_FORMAT)
+        Result.success(paymentParser.parse(content) ?: ParsedPayment(party = null, amount = null))
     } catch (e: LlmUnavailableException) {
         Result.failure(e)
     }
@@ -106,6 +115,36 @@ Input: ने रिया ने चार किलो दाल और पा
                         }
                     }
                     putJsonArray("required") { add("entries") }
+                }
+            }
+        }
+
+        // Keep in sync with scripts/validate-intent-prompt.py if a payment section is added there.
+        const val PAYMENT_SYSTEM_PROMPT = """You are a kirana store assistant. The shopkeeper is recording a customer paying back money they owed. Extract JSON only.
+Return ONLY: {"party": string|null, "amount": number|null}
+No explanation. No markdown. Just the raw JSON object.
+- party = the person's name ONLY. Remove को/ko/ने/ne/से/se tokens before AND after it (e.g. "रमेश ने"→"रमेश").
+- amount = the rupee amount as a plain number in digits.
+
+Examples:
+Input: रमेश ने पचास रुपये दिए
+{"party":"रमेश","amount":50}
+Input: प्रिया ने सौ रुपये चुकाए
+{"party":"प्रिया","amount":100}
+Input: दो सौ जमा किए सुरेश ने
+{"party":"सुरेश","amount":200}"""
+
+        val PAYMENT_RESPONSE_FORMAT = buildJsonObject {
+            put("type", "json_schema")
+            putJsonObject("json_schema") {
+                put("name", "payment")
+                putJsonObject("schema") {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("party") { putJsonArray("type") { add("string"); add("null") } }
+                        putJsonObject("amount") { putJsonArray("type") { add("number"); add("null") } }
+                    }
+                    putJsonArray("required") { add("party"); add("amount") }
                 }
             }
         }
