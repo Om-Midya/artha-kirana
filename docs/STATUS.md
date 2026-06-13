@@ -1,6 +1,6 @@
 # Artha Kirana — Status
 
-**Updated:** 2026-06-13 · **Branch:** `main` (Phase 0–2 merged) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+**Updated:** 2026-06-14 · **Branch:** `main` (Phase 0–2 merged); Assistant slice on `feat/assistant-layer` · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
 
 ## Progress
 
@@ -13,6 +13,7 @@
 | **Phase 4 — Voice + vernacular** | 🟢 Voice pipeline WORKING on-device. whisper.cpp v1.7.4 (arm64, `-O3`) + fine-tuned **whisper-hindi-small q5_1** → accurate Devanagari → `HindiNumbers` normalizer (number-words→digits) → Qwen with `json_schema` grammar → confirm card. ~2-3s. Hallucination on poor audio curbed (single_segment off + RMS silence gate). **Still TODO:** Hindi TTS "Hear summary", recording animation, vernacular toggle, `inputMethod="voice"`, Devanagari party-name vs romanized. |
 | Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
 | Phase 6 — Demo hardening | ⬜ Not started |
+| **Assistant layer (thin slice)** | 🟢 Built on branch `feat/assistant-layer` (14/14 tasks, per-task spec+quality reviews, unit tests green, full `assembleDebug` clean, installed on iQOO). Conversational chat-thread tab (center protruding gold FAB) → stateless two-stage intent router (classify → intent-specific extractor) over existing use-cases. 3 intents: `log_sale`, `query_pnl`, `record_payment`. **Live intent classifier = 10/10 on-device** (`scripts/validate-intent-prompt.py` vs Qwen 3B). Inline confirm cards reuse `EditableEntryCard`; voice input reuses the whisper mic; replies text-only (TTS deferred). **Awaiting human on-device UI walkthrough** (3 flows + voice + offline) before merge. Spec: `docs/superpowers/specs/2026-06-14-artha-assistant-design.md`; plan: `docs/superpowers/plans/2026-06-14-artha-assistant.md`. |
 
 ## What works (verified on the iQOO)
 
