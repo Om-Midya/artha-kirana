@@ -2,6 +2,7 @@ package com.artha.kirana.data.remote.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 /**
  * OpenAI-compatible chat-completions DTOs for the on-device llama-server.
@@ -20,6 +21,8 @@ data class ChatCompletionRequest(
     val temperature: Double = 0.1,
     @SerialName("max_tokens") val maxTokens: Int = 256,
     val stop: List<String> = listOf("```"),
+    // Optional GBNF/json_schema constraint — llama-server forces output to match it.
+    @SerialName("response_format") val responseFormat: JsonElement? = null,
 )
 
 @Serializable

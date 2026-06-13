@@ -13,6 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.JsonElement
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,7 +43,7 @@ class LlmHttpClient @Inject constructor(
      * Retries a few times — llama-server occasionally returns a transient 500 under load, and a
      * stateless completion is safe to retry; this keeps voice/typed parsing from bouncing to manual.
      */
-    suspend fun chat(system: String, user: String): String {
+    suspend fun chat(system: String, user: String, responseFormat: JsonElement? = null): String {
         var lastError: Throwable? = null
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
@@ -55,6 +56,7 @@ class LlmHttpClient @Inject constructor(
                                     ChatMessage(role = "system", content = system),
                                     ChatMessage(role = "user", content = user),
                                 ),
+                                responseFormat = responseFormat,
                             ),
                         )
                     }.body()

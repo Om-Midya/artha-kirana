@@ -3,6 +3,12 @@ package com.artha.kirana.data.llm
 import com.artha.kirana.data.remote.LlmHttpClient
 import com.artha.kirana.data.remote.LlmUnavailableException
 import com.artha.kirana.domain.model.SaleEntry
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,7 +24,7 @@ class LlmEngine @Inject constructor(
     suspend fun health(): Boolean = client.health()
 
     suspend fun parseSale(text: String): Result<List<SaleEntry>> = try {
-        val content = client.chat(SALE_SYSTEM_PROMPT, text)
+        val content = client.chat(SALE_SYSTEM_PROMPT, text, SALE_RESPONSE_FORMAT)
         Result.success(saleParser.parse(content))
     } catch (e: LlmUnavailableException) {
         Result.failure(e)
@@ -71,5 +77,37 @@ Input: ढाई किलो दाल नब्बे रुपये
 {"entries":[{"item":"दाल","qty":"2.5 kg","amount":90,"type":"cash","party":null}]}
 Input: ने रिया ने चार किलो दाल और पांच किलो आलू लिया
 {"entries":[{"item":"दाल","qty":"4 kg","amount":null,"type":"cash","party":"रिया"},{"item":"आलू","qty":"5 kg","amount":null,"type":"cash","party":"रिया"}]}"""
+
+        /**
+         * Forces llama-server to emit JSON matching the sale schema (llama.cpp converts this to a
+         * GBNF grammar). Guarantees valid structure + a valid `type` enum every time — no markdown,
+         * preamble, or malformed JSON regardless of how the model would otherwise drift.
+         */
+        val SALE_RESPONSE_FORMAT = buildJsonObject {
+            put("type", "json_schema")
+            putJsonObject("json_schema") {
+                put("name", "sale")
+                putJsonObject("schema") {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("entries") {
+                            put("type", "array")
+                            putJsonObject("items") {
+                                put("type", "object")
+                                putJsonObject("properties") {
+                                    putJsonObject("item") { putJsonArray("type") { add("string"); add("null") } }
+                                    putJsonObject("qty") { putJsonArray("type") { add("string"); add("null") } }
+                                    putJsonObject("amount") { putJsonArray("type") { add("number"); add("null") } }
+                                    putJsonObject("type") { putJsonArray("enum") { add("cash"); add("credit"); add("repayment") } }
+                                    putJsonObject("party") { putJsonArray("type") { add("string"); add("null") } }
+                                }
+                                putJsonArray("required") { add("item"); add("qty"); add("amount"); add("type"); add("party") }
+                            }
+                        }
+                    }
+                    putJsonArray("required") { add("entries") }
+                }
+            }
+        }
     }
 }
