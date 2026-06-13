@@ -43,7 +43,7 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
     val revenue by vm.todayRevenue.collectAsStateWithLifecycle()
     val sales by vm.recentSales.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<SaleEntity?>(null) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Column(
         Modifier
