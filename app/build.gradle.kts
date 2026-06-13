@@ -77,9 +77,11 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.compose)
     implementation(libs.timber)
-    // Vico (charts) deferred to Phase 2 — 3.1.0 needs Kotlin 2.3.x; pick a Kotlin-2.0-compatible version there.
-    // implementation(libs.vico.compose.m3)
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m3)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
