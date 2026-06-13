@@ -23,7 +23,7 @@ class LogSaleUseCase @Inject constructor(
         rawInput: String?,
     ): Long {
         val item = entry.item?.let { inventory.findByName(it) }
-        val qty = parseLeadingNumber(entry.qty)
+        val qty = parseLeadingQty(entry.qty)
 
         val saleId = sales.logSale(
             SaleEntity(
@@ -50,10 +50,4 @@ class LogSaleUseCase @Inject constructor(
         return saleId
     }
 
-    /** Pulls the first number out of a qty string ("2 kg" -> 2.0). Hindi number words -> 0.0. */
-    private fun parseLeadingNumber(qty: String?): Double {
-        if (qty == null) return 0.0
-        val match = Regex("""\d+(\.\d+)?""").find(qty) ?: return 0.0
-        return match.value.toDoubleOrNull() ?: 0.0
-    }
 }
