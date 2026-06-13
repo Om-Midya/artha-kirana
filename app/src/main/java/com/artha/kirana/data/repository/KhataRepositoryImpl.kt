@@ -15,6 +15,9 @@ class KhataRepositoryImpl @Inject constructor(
 
     override fun observeAll(): Flow<List<KhataEntity>> = khataDao.observeAll()
     override fun totalOutstanding(): Flow<Double> = khataDao.totalOutstanding()
+    override fun observeParty(id: Long): Flow<KhataEntity?> = khataDao.observeById(id)
+    override fun observeTransactions(id: Long): Flow<List<KhataTransactionEntity>> =
+        txnDao.observeForParty(id)
 
     override suspend fun applyCredit(party: String, amount: Double, saleId: Long?) =
         adjust(party, delta = amount, type = "credit", saleId = saleId, amount = amount)

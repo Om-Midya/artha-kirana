@@ -23,4 +23,12 @@ interface SalesDao {
 
     @Query("SELECT * FROM sales WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
     suspend fun between(start: Long, end: Long): List<SaleEntity>
+
+    /** Cost of goods sold = sum of qty*costPrice for non-repayment sales joined to items. */
+    @Query(
+        "SELECT COALESCE(SUM(s.qtySold * i.costPrice), 0) FROM sales s " +
+            "JOIN items i ON s.itemId = i.id " +
+            "WHERE s.type != 'repayment' AND s.timestamp BETWEEN :start AND :end",
+    )
+    fun cogsBetween(start: Long, end: Long): Flow<Double>
 }

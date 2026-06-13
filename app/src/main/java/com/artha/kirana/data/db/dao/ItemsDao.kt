@@ -29,4 +29,7 @@ interface ItemsDao {
 
     @Query("SELECT * FROM items WHERE reorderThreshold > 0 AND qtyInStock < reorderThreshold")
     suspend fun lowStock(): List<ItemEntity>
+
+    @Query("SELECT * FROM items")
+    suspend fun getAllOnce(): List<ItemEntity>
 }

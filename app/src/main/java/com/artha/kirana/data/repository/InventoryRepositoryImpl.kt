@@ -13,4 +13,5 @@ class InventoryRepositoryImpl @Inject constructor(
     override suspend fun findByName(name: String): ItemEntity? = dao.findByName(name)
     override suspend fun addItem(item: ItemEntity): Long = dao.insert(item)
     override suspend fun decrementStock(id: Long, qty: Double) = dao.decrementStock(id, qty)
+    override suspend fun updateItem(item: ItemEntity) = dao.update(item)
 }

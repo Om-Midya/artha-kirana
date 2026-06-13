@@ -21,6 +21,9 @@ interface KhataDao {
     @Query("SELECT * FROM khata WHERE partyName = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): KhataEntity?
 
+    @Query("SELECT * FROM khata WHERE id = :id")
+    fun observeById(id: Long): Flow<KhataEntity?>
+
     @Query("SELECT COALESCE(SUM(balance), 0) FROM khata WHERE balance > 0")
     fun totalOutstanding(): Flow<Double>
 }

@@ -12,4 +12,6 @@ class SalesRepositoryImpl @Inject constructor(
     override suspend fun logSale(sale: SaleEntity): Long = dao.insert(sale)
     override fun observeSince(start: Long): Flow<List<SaleEntity>> = dao.observeSince(start)
     override fun revenueBetween(start: Long, end: Long): Flow<Double> = dao.revenueBetween(start, end)
+    override fun cashBetween(start: Long, end: Long): Flow<Double> = dao.cashBetween(start, end)
+    override fun cogsBetween(start: Long, end: Long): Flow<Double> = dao.cogsBetween(start, end)
 }

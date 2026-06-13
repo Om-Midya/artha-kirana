@@ -7,4 +7,6 @@ interface SalesRepository {
     suspend fun logSale(sale: SaleEntity): Long
     fun observeSince(start: Long): Flow<List<SaleEntity>>
     fun revenueBetween(start: Long, end: Long): Flow<Double>
+    fun cashBetween(start: Long, end: Long): Flow<Double>
+    fun cogsBetween(start: Long, end: Long): Flow<Double>
 }

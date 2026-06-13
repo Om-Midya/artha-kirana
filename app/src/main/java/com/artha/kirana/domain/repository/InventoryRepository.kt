@@ -8,4 +8,5 @@ interface InventoryRepository {
     suspend fun findByName(name: String): ItemEntity?
     suspend fun addItem(item: ItemEntity): Long
     suspend fun decrementStock(id: Long, qty: Double)
+    suspend fun updateItem(item: ItemEntity)
 }
