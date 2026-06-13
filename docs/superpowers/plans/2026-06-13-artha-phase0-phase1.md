@@ -8,6 +8,8 @@
 
 **Tech Stack:** Kotlin 2.0.21, Jetpack Compose (BOM 2024.09), Material 3, Hilt, Room (KSP, no SQLCipher yet), Navigation Compose, Ktor (OkHttp engine) + kotlinx.serialization, Accompanist Permissions, Timber.
 
+> **Toolchain deviation (applied during execution):** the scaffold shipped **AGP 9.0.1 / Gradle 9.2.1**, which is incompatible with Hilt + KSP + Compose (Hilt only added AGP-9 support in 2.59+, shipped broken; Compose wants AGP ≥ 9.2). We downgraded to **AGP 8.13.0 / Gradle 8.13** — the last stable 8.x and the combo the spec's libraries were written against (`compileSdk 36` needs AGP ≥ 8.9). Also: removed the AGP-9 `gradle-daemon-jvm.properties` (JDK-21 pin) to run the daemon on the launching JDK 17; changed the `compileSdk` DSL from the AGP-9 `release(36){}` block to `compileSdk = 36`; restored `distributionSha256Sum` for the 8.13 wrapper (verified official checksum). **Vico (charts) is deferred to Phase 2** — 3.1.0 requires Kotlin 2.3.x; pick a Kotlin-2.0-compatible version there.
+
 **Source-of-truth docs:**
 - `CLAUDE-1.md` — canonical spec (DB schema §4, prompts §5, JSON safety §6, P&L §10, coding standards §16, test cases §18).
 - Design doc (above) — the LLM-over-HTTP delta. Where it disagrees with `CLAUDE-1.md`, the design doc wins.
