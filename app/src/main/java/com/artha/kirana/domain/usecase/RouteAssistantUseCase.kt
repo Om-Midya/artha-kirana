@@ -45,6 +45,9 @@ class RouteAssistantUseCase @Inject constructor(
         }
     }
 
+    /** Preload the on-device LLM (intent prefix cache) so the first message is fast. Safe if offline. */
+    suspend fun warmUp() = intentRouter.warmUp()
+
     companion object {
         const val COULD_NOT_UNDERSTAND = "समझ नहीं आया — दोबारा कहें (जैसे: 'दो किलो चावल अस्सी का')।"
     }

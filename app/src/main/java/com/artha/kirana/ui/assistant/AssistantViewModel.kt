@@ -82,6 +82,11 @@ class AssistantViewModel @Inject constructor(
 
     fun cancel(messageId: Long) = updateStatus(messageId, DraftStatus.Cancelled)
 
+    /** Preload the on-device LLM (intent prefix cache) so the first message is fast. */
+    fun warmUpLlm() {
+        viewModelScope.launch { runCatching { route.warmUp() } }
+    }
+
     // ---- voice (lifted from SaleEntryViewModel) ----
 
     fun warmUpVoice() {

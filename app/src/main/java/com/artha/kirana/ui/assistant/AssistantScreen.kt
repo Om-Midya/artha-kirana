@@ -52,7 +52,10 @@ fun AssistantScreen(viewModel: AssistantViewModel = hiltViewModel()) {
         ActivityResultContracts.RequestPermission(),
     ) { granted -> if (granted) viewModel.toggleVoice() }
 
-    LaunchedEffect(Unit) { viewModel.warmUpVoice() }
+    LaunchedEffect(Unit) {
+        viewModel.warmUpLlm()
+        viewModel.warmUpVoice()
+    }
     LaunchedEffect(Unit) { viewModel.transcript.collect { input = it } }
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)

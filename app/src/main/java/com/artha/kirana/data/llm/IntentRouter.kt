@@ -34,6 +34,15 @@ class IntentRouter @Inject constructor(
         Result.failure(e)
     }
 
+    /**
+     * Primes the server with the intent system prompt so the first real classify reuses the
+     * cached prefix (KV cache) and returns fast. Fire-and-forget; swallows errors (server may
+     * be offline). The result is intentionally discarded.
+     */
+    suspend fun warmUp() {
+        runCatching { client.chat(INTENT_SYSTEM_PROMPT, "नमस्ते", INTENT_RESPONSE_FORMAT) }
+    }
+
     /** Pure mapping of raw LLM content → intent; never throws (unknown/garbage → UNKNOWN). */
     fun parseIntent(rawContent: String): AssistantIntent {
         val jsonStr = JsonParser.extractJson(rawContent) ?: return AssistantIntent.UNKNOWN
