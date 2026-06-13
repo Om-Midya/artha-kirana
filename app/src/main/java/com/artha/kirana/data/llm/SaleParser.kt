@@ -22,7 +22,7 @@ private data class SaleParseDto(
 
 /**
  * Turns raw LLM output into [SaleEntry]s. Never throws: on any extraction/parse failure
- * it returns an empty list so the caller can fall back to manual entry (CLAUDE-1.md §6).
+ * it returns an empty list so the caller can fall back to manual entry (CLAUDE.md §6).
  */
 class SaleParser @Inject constructor() {
 

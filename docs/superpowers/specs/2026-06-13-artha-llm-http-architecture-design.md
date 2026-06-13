@@ -1,22 +1,22 @@
 # Artha Kirana — LLM-over-HTTP Architecture Design
 
 **Date:** 2026-06-13
-**Status:** Approved (design); plan-only session, no app code written yet
-**Canonical spec:** `CLAUDE-1.md` (project root) — this doc is a **delta** over that spec, not a replacement.
+**Status:** Historical design record. The LLM-over-HTTP decision here has since been **absorbed into `CLAUDE.md`**, which has also moved ahead of this doc (voice = whisper.cpp; hard requirement that llama-server runs on-device/never tethered). **For current authority and state, read `CLAUDE.md` + `docs/STATUS.md`.** This doc captures the original reasoning; where it conflicts with the updated `CLAUDE.md`, CLAUDE.md wins.
+**Canonical spec:** `CLAUDE.md` (project root).
 
 ---
 
 ## 0. Purpose of this document
 
-`CLAUDE-1.md` is the full 18-section build spec for Artha Kirana. It assumes the on-device
+`CLAUDE.md` is the full 18-section build spec for Artha Kirana. It assumes the on-device
 LLM runs **in-process** via LiteRT-LM / Gemma 3 1B. This session changed that decision. This
 document records:
 
 1. The chosen LLM architecture (localhost HTTP → `llama-server`) and everything it changes.
 2. The handful of other decisions made this session (SQLCipher deferral, model delivery, spikes).
-3. Everything in `CLAUDE-1.md` that **still stands unchanged**.
+3. Everything in `CLAUDE.md` that **still stands unchanged**.
 
-Where this document and `CLAUDE-1.md` disagree, **this document wins**. Everything else: follow `CLAUDE-1.md`.
+Where this document and `CLAUDE.md` disagree, **this document wins**. Everything else: follow `CLAUDE.md`.
 
 ---
 
@@ -62,7 +62,7 @@ LlmEngine ──(build prompt)──► LlmHttpClient ──HTTP POST──► 1
 JsonParser.extractJson()  ──► domain model  (or manual-entry fallback on failure)
 ```
 
-- **`LlmEngine`** = orchestration only (build prompt from `CLAUDE-1.md` §5 → call client → extract JSON).
+- **`LlmEngine`** = orchestration only (build prompt from `CLAUDE.md` §5 → call client → extract JSON).
 - **`LlmHttpClient`** = Ktor client. `POST /v1/chat/completions` (OpenAI-compatible, confirmed in handoff),
   `temperature=0.1`, `max_tokens=256`, stop sequences `["```", "\n\n"]`.
 - **Symmetry:** the local LLM and the cloud Claude API (market trends) are **both Ktor clients** — one
@@ -104,7 +104,7 @@ This session produces the design doc + implementation plan. **No app code is wri
 
 ---
 
-## 4. Package structure (delta over `CLAUDE-1.md` §3)
+## 4. Package structure (delta over `CLAUDE.md` §3)
 
 Identical to the spec **except** the LLM area, which becomes HTTP-shaped:
 
@@ -126,7 +126,7 @@ coding standards (§16), out-of-scope list (§17), LLM test cases (§18) — all
 
 ---
 
-## 5. Phases (delta over `CLAUDE-1.md` §15)
+## 5. Phases (delta over `CLAUDE.md` §15)
 
 - **Phase 0 — Foundation.** Gradle deps (Hilt, Room+KSP, Ktor, kotlinx.serialization, Nav, Compose),
   Hilt setup, Room (**no SQLCipher**) with 5 entities + DAOs, repositories (stubs), Navigation 4-tab,
@@ -167,4 +167,4 @@ Verify each library's current API in the phase it first appears:
 
 The spec stands almost entirely as-is. The only structural changes are: (1) swap the in-app LLM runtime
 for a localhost HTTP client, (2) defer SQLCipher behind a swap-in seam, (3) rewrite SPIKE A as a
-connectivity check. Everything else in `CLAUDE-1.md` is the build contract.
+connectivity check. Everything else in `CLAUDE.md` is the build contract.

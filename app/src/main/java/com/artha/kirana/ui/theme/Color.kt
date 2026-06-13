@@ -2,7 +2,7 @@ package com.artha.kirana.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Artha brand palette (CLAUDE-1.md §13)
+// Artha brand palette (CLAUDE.md §13)
 val BrandGold = Color(0xFFE6AC00)
 val BrandDark = Color(0xFF1A1A1A)
 val AccentGreen = Color(0xFF2D7D46)

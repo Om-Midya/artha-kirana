@@ -8,16 +8,16 @@
 ### Research before you build
 Before implementing ANY library, feature, or API integration:
 1. **Use Context7 MCP** to pull the latest docs for that library.
-   - Command: `mcp__context7__resolve-library-id` then `mcp__context7__get-library-docs`
-   - Do this for: LiteRT-LM, Room, CameraX, ML Kit, Hilt, Navigation Compose, Vico, Ktor
+    - Command: `mcp__context7__resolve-library-id` then `mcp__context7__get-library-docs`
+    - Do this for: whisper.cpp (Android JNI), Room, CameraX, ML Kit, Hilt, Navigation Compose, Vico, Ktor
 2. Confirm the current version from `libs.versions.toml` before writing any import
 3. Never write code against a library you haven't verified the API for
 
 ### Ask when you need clarity — do not guess
 Stop and ask the user when:
-- A feature has multiple valid implementation approaches with real tradeoffs (e.g. "Should I store the model in assets or download it at first launch?")
-- A permission or system API behaves differently across Android versions and you need to know the min SDK support level
-- The PRD is ambiguous about a UX flow (e.g. "Does the confirmation screen for bill scanning allow editing individual line items?")
+- A feature has multiple valid implementation approaches with real tradeoffs
+- A permission or system API behaves differently across Android versions
+- The spec is ambiguous about a UX flow
 - You're about to make a breaking schema change to the Room database
 - You need the Claude API key or any secret value
 
@@ -48,13 +48,32 @@ Always write code that degrades gracefully. Add TODO comments where device-speci
 ```
 Shopkeeper speaks/types a sale in Hindi
         ↓
-On-device LLM (LiteRT-LM + Gemma 3 1B) parses it into structured JSON
+On-device LLM (Qwen 2.5 3B) parses it into structured JSON
         ↓
 Room DB: sales ledger + inventory update + khata balance
         ↓
 Vernacular summary shown/spoken back
 All offline. Nothing leaves the device (except anonymised market trend request).
 ```
+
+### ARCHITECTURE NOTE — LLM runtime (current deviation from original spec)
+The LLM currently runs via **llama-server (Qwen 2.5 3B) over `127.0.0.1:8080`**, NOT in-app
+LiteRT/JNI. This was a pragmatic dev-speed decision.
+
+**HARD REQUIREMENT: llama-server MUST run ON THE iQOO itself** (Termux or native Android
+process), NEVER on a tethered Mac with ADB port-forwarding. The entire pitch is
+"nothing leaves the phone." If the server runs on a laptop:
+- Airplane mode breaks the demo
+- The core privacy claim becomes false
+- A judge asking "where does the model run?" collapses the story
+
+**Verification gate (must pass before Phase 6 demo):** Enable airplane mode, disconnect
+any Mac/USB tether, and confirm a sale still parses end-to-end. If it doesn't, completing
+the on-device server setup is the #1 priority — above all features. Document the exact
+untethered start procedure in `docs/demo-runbook.md`.
+
+Acceptable long-term alternative: migrate to in-app inference (LiteRT-LM or llama.cpp JNI)
+so the model loads inside the app process. Only do this if time allows after core features.
 
 **Hackathon device:** iQOO 15 (Snapdragon 8 Elite Gen 5, up to 16GB RAM, UFS 4.1)
 **Target audience:** Kirana store owners in Tier 2/3 India, Hindi/Kannada/Tamil speakers
@@ -71,18 +90,36 @@ All offline. Nothing leaves the device (except anonymised market trend request).
 
 ### Architecture
 - **Clean Architecture** with three layers:
-  - `data/` — Room DB, repositories, DTOs
-  - `domain/` — Use cases, domain models, repository interfaces
-  - `ui/` — Composables, ViewModels, UI state
+    - `data/` — Room DB, repositories, DTOs
+    - `domain/` — Use cases, domain models, repository interfaces
+    - `ui/` — Composables, ViewModels, UI state
 - **MVVM** — ViewModel + StateFlow + Compose collectAsStateWithLifecycle
 - **Single Activity** with Navigation Compose
 
-### On-Device LLM (MOST IMPORTANT — look up via Context7 first)
-- **LiteRT-LM (Kotlin API)** — Google's recommended on-device LLM runtime (replaces MediaPipe LLM API which is now maintenance-only)
-- Docs: https://ai.google.dev/edge/litert-lm/overview
-- Model: **Gemma 3 1B** (`.litertlm` format from HuggingFace LiteRT Community)
-- Fallback: MediaPipe `tasks-genai` if LiteRT-LM Kotlin API isn't stable yet (ask user)
-- **Use Context7 to pull LiteRT-LM Kotlin API docs before writing any LLM code**
+### On-Device LLM
+- **Qwen 2.5 3B** via **llama-server** over `127.0.0.1:8080` (see ARCHITECTURE NOTE in §1)
+- Config: temperature=0.1, maxTokens=256, stopSequences=["```", "\n\n"]
+- MUST run on-device. Verify via airplane-mode test before demo.
+- Sale parser system prompt: see §5. Keep `LlmEngine.SALE_SYSTEM_PROMPT` in sync with
+  any external validation script (e.g. `validate-sale-prompt.py`).
+
+### Voice Input
+- **whisper.cpp** — on-device ASR via JNI (NOT Android SpeechRecognizer)
+- Rationale: removes dependency on OriginOS allowing system STT offline; fully
+  self-contained and guaranteed offline, reinforcing the "nothing leaves the phone" pitch
+- Model: ggml-tiny or ggml-base (multilingual, ~40–75MB). Test tiny first; use base/small
+  only if Hindi accuracy is poor
+- Reference impls: `ggml-org/whisper.cpp` (has an Android Compose example),
+  `mikeesto/whispercpp-android`
+- Flow: record 16kHz mono WAV → whisper.cpp transcribe → feed text into the existing
+  ParseSaleEntryUseCase (same pipeline as typed input)
+- Use Context7 for whisper.cpp Android JNI build setup before implementing
+- Fallback chain if native build is too costly in hackathon time:
+  (1) Android SpeechRecognizer with EXTRA_PREFER_OFFLINE=true, or (2) typed-entry only
+
+### Voice Output
+- **Android TextToSpeech** (built-in)
+- Set language to `Locale("hi", "IN")` for Hindi output
 
 ### OCR (Bill Scanning)
 - **ML Kit Text Recognition** — `com.google.mlkit:text-recognition`
@@ -94,7 +131,8 @@ All offline. Nothing leaves the device (except anonymised market trend request).
 - Use Context7 for latest CameraX Compose integration
 
 ### Database
-- **Room** with **SQLCipher** for encryption
+- **Room** with **SQLCipher** for encryption (SQLCipher currently DEFERRED behind a
+  swap-in seam in `DatabaseModule` — enable when time allows)
 - `androidx.room:room-runtime`, `androidx.room:room-ktx`
 - `net.zetetic:android-database-sqlcipher`
 - Use Context7 for Room + SQLCipher integration pattern
@@ -105,25 +143,19 @@ All offline. Nothing leaves the device (except anonymised market trend request).
 ### Navigation
 - **Navigation Compose** — `androidx.navigation:navigation-compose`
 
-### Voice Input
-- **Android SpeechRecognizer** (built-in, no library needed)
-- Hindi locale: `Locale("hi", "IN")`
-- Verify offline capability in first 2 hours on the actual iQOO device
-
-### Voice Output
-- **Android TextToSpeech** (built-in)
-- Set language to `Locale("hi", "IN")` for Hindi output
-
 ### Background / Alerts
 - **WorkManager** — for inventory threshold monitoring
 - **NotificationManager** — local push notifications
 
 ### Charts (P&L Dashboard)
 - **Vico** — `com.patrykandpatrick.vico:compose` — Compose-native charts
-- Use Context7 for latest Vico API
+- NOTE: Vico 3.1.0 needs Kotlin 2.3.x; pick a version compatible with the project's
+  Kotlin (currently 2.0.x). Verify via Context7 before adding.
 
-### HTTP (Claude API for Market Trends)
-- **Ktor** — `io.ktor:ktor-client-android`, `ktor-client-content-negotiation`, `ktor-serialization-kotlinx-json`
+### HTTP (llama-server + Claude API)
+- **Ktor** — `io.ktor:ktor-client-android`, `ktor-client-content-negotiation`,
+  `ktor-serialization-kotlinx-json`
+- Used for both the local llama-server (127.0.0.1:8080) and the Claude API (market trends)
 - **kotlinx.serialization** — `org.jetbrains.kotlinx:kotlinx-serialization-json`
 
 ### Permissions
@@ -141,14 +173,15 @@ All offline. Nothing leaves the device (except anonymised market trend request).
 ```
 com.artha.kirana/
 ├── di/                          # Hilt modules
-│   ├── DatabaseModule.kt
-│   ├── LlmModule.kt
+│   ├── DatabaseModule.kt        # Room (SQLCipher seam deferred)
+│   ├── LlmModule.kt             # llama-server HTTP client wiring
+│   ├── VoiceModule.kt           # WhisperEngine singleton
 │   ├── RepositoryModule.kt
 │   └── NetworkModule.kt
 │
 ├── data/
 │   ├── db/
-│   │   ├── ArthaDatabase.kt     # Room DB + SQLCipher setup
+│   │   ├── ArthaDatabase.kt     # Room DB (version 2; itemName denormalized on sales)
 │   │   ├── dao/
 │   │   │   ├── SalesDao.kt
 │   │   │   ├── ItemsDao.kt
@@ -167,14 +200,15 @@ com.artha.kirana/
 │   │   ├── KhataRepositoryImpl.kt
 │   │   └── InsightsRepositoryImpl.kt
 │   ├── llm/
-│   │   ├── LlmEngine.kt         # LiteRT-LM wrapper
+│   │   ├── LlmEngine.kt         # llama-server HTTP wrapper; holds SALE_SYSTEM_PROMPT
 │   │   ├── SaleParser.kt        # Parses sale text → SaleEntry
 │   │   └── BillParser.kt        # Parses OCR text → PurchaseEntries
 │   ├── ocr/
 │   │   └── BillOcrEngine.kt     # ML Kit Text Recognition wrapper
 │   ├── voice/
-│   │   ├── SpeechRecognizerManager.kt
-│   │   └── TextToSpeechManager.kt
+│   │   ├── WhisperEngine.kt     # whisper.cpp JNI wrapper, transcribe WAV → text
+│   │   ├── AudioRecorder.kt     # captures 16kHz mono PCM/WAV
+│   │   └── TextToSpeechManager.kt  # Android TTS for Hindi output
 │   ├── remote/
 │   │   └── ClaudeApiClient.kt   # Ktor client for market trends
 │   └── worker/
@@ -215,7 +249,7 @@ com.artha.kirana/
 │   ├── entry/
 │   │   ├── SaleEntryScreen.kt   # Typed + voice entry
 │   │   ├── SaleEntryViewModel.kt
-│   │   └── VoiceEntryButton.kt  # Mic FAB with animation
+│   │   └── VoiceEntryButton.kt  # Mic FAB with recording animation
 │   ├── inventory/
 │   │   ├── InventoryScreen.kt
 │   │   ├── InventoryViewModel.kt
@@ -247,6 +281,9 @@ com.artha.kirana/
 
 ## 4. Database Schema (Room Entities)
 
+NOTE: Current DB is **version 2** — `itemName` is denormalized onto sales;
+`fallbackToDestructiveMigration` is enabled for hackathon speed.
+
 ### ItemEntity
 ```kotlin
 @Entity(tableName = "items")
@@ -270,6 +307,7 @@ data class ItemEntity(
 data class SaleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val itemId: Long? = null,          // null for pure khata/repayment entries
+    val itemName: String? = null,      // denormalized (DB v2)
     val qtySold: Double = 0.0,
     val amount: Double,
     val type: String,                  // "cash" | "credit" | "repayment"
@@ -329,7 +367,8 @@ data class KhataTransactionEntity(
 
 ### SALE ENTRY PARSER
 ```
-System prompt (verbatim — do not modify):
+System prompt (verbatim — keep in sync with LlmEngine.SALE_SYSTEM_PROMPT and any
+external validation script):
 You are a kirana store billing assistant. Parse the input into JSON only.
 Return ONLY the JSON object. No explanation. No markdown. No preamble.
 No "here is the JSON". Just the raw JSON object.
@@ -386,12 +425,9 @@ Always extract JSON safely:
 // util/JsonParser.kt
 object JsonParser {
     fun extractJson(raw: String): String? {
-        // Strip markdown fences
         val stripped = raw
             .removePrefix("```json").removePrefix("```")
             .removeSuffix("```").trim()
-
-        // Find first { and last }
         val start = stripped.indexOf('{')
         val end = stripped.lastIndexOf('}')
         if (start == -1 || end == -1 || end <= start) return null
@@ -402,40 +438,53 @@ object JsonParser {
 
 Always wrap LLM parse calls in try-catch. On failure, show the user a manual entry screen — never crash.
 
----
-
-## 7. Key LiteRT-LM Implementation Notes
-
-**IMPORTANT: Use Context7 to get the latest LiteRT-LM Kotlin API docs before writing this.**
-The API changed recently (MediaPipe deprecated). Key things to verify:
-- Correct Gradle dependency (may be `com.google.ai.edge.litert:litert-lm` or similar)
-- Model file format (`.litertlm` vs `.task`)
-- Session management (create once, reuse)
-- Async inference (use Kotlin Flow or suspend functions)
-- GPU/NPU acceleration flags for Snapdragon
-
-The model file (~2GB) should be:
-- Downloaded to `filesDir` at first launch (not bundled in APK)
-- Loaded once in `LlmModule.kt` as a singleton
-- Kept in memory — do not reload per request
-
-Ask the user: "Should I download the model file on first app launch from HuggingFace, or will you push it via ADB? This affects the first-launch UX."
+NOTE: The model occasionally varies on `type` under sampling at temp 0.1. §18 cases are
+currently 5/5 but watch edge cases — if a case regresses, tighten the prompt before
+changing temperature.
 
 ---
 
-## 8. Voice Input Implementation
+## 7. LLM Engine Notes (llama-server HTTP)
+
+The LLM runs as llama-server (Qwen 2.5 3B) on `127.0.0.1:8080` ON THE DEVICE.
+`LlmEngine.kt` is an HTTP client (Ktor) that:
+- POSTs the system prompt + user input to the local server's completion endpoint
+- Uses temperature=0.1, the stop sequences above, maxTokens=256
+- Runs on `Dispatchers.IO`, never the main thread
+- Holds `SALE_SYSTEM_PROMPT` as the single source of truth for the prompt
+
+**Server lifecycle for the demo:** the server must start on the phone without a tethered
+Mac. Document the exact start command in `docs/demo-runbook.md`. The Phase 6 airplane-mode
+test is the gate that proves this works.
+
+If migrating to in-app inference later (time permitting): swap `LlmEngine` to call
+llama.cpp JNI or LiteRT-LM directly so there is no server process at all. Use Context7
+for the chosen library's Android API.
+
+---
+
+## 8. Voice Input Implementation (whisper.cpp)
 
 ```kotlin
-// data/voice/SpeechRecognizerManager.kt
-// Use Android SpeechRecognizer with LANGUAGE_MODEL_FREE_FORM
-// Set:
-//   RecognizerIntent.EXTRA_LANGUAGE = "hi-IN"
-//   RecognizerIntent.EXTRA_PREFER_OFFLINE = true  ← CRITICAL for hackathon demo
-//   RecognizerIntent.EXTRA_MAX_RESULTS = 1
-
-// IMPORTANT: Test offline mode in H0-2 on the actual iQOO before building the full flow
-// If offline STT fails, fall back to typed entry silently
-// Emit a SpeechState sealed class: Listening | Result(text) | Error | Offline
+// data/voice/WhisperEngine.kt — whisper.cpp via JNI
+// 1. AudioRecorder captures mic input as 16kHz mono PCM (whisper requires 16kHz)
+// 2. WhisperEngine.transcribe(wavPath, lang="hi") → returns transcribed text
+// 3. Transcribed text flows into the SAME ParseSaleEntryUseCase as typed input
+//
+// Model loading: load ggml-tiny.bin (or base) once as a singleton in VoiceModule.
+// Keep model in memory; do not reload per transcription.
+//
+// Emit a VoiceState sealed class: Idle | Recording | Transcribing | Result(text) | Error
+//
+// IMPORTANT: whisper.cpp needs a native build step (CMake/NDK). Use Context7 for the
+// Android JNI setup. The ggml-org/whisper.cpp repo has a reference Android example.
+//
+// Performance: the tiny model transcribes a ~5s clip in well under 1s on the
+// Snapdragon 8 Elite Gen 5. Sequence transcription AFTER recording stops, and do NOT
+// run whisper and the LLM at the same time (memory-bandwidth contention).
+//
+// Fallback: if the native build is too costly in hackathon time, fall back to
+// Android SpeechRecognizer (EXTRA_PREFER_OFFLINE=true), or ship typed-entry only.
 ```
 
 ---
@@ -487,7 +536,7 @@ data class PnlSummary(
 // Runs every 30 minutes via PeriodicWorkRequest
 // Queries: SELECT * FROM items WHERE qty_in_stock < reorder_threshold AND reorder_threshold > 0
 // For each item below threshold: fire NotificationManager with channel INVENTORY_ALERTS
-// IMPORTANT: OriginOS battery optimization may kill WorkManager. Document this in UI settings screen.
+// IMPORTANT: OriginOS battery optimization may kill WorkManager. Document in settings screen.
 // Add a "Fix battery settings" deep link → Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
 ```
 
@@ -502,9 +551,11 @@ data class PnlSummary(
 // Headers: x-api-key, anthropic-version: 2023-06-01
 // Payload: ONLY anonymised item-level aggregates (item name + qty sold)
 // NEVER include: party names, balances, amounts, timestamps
-
-// Cache the last response in DataStore — re-use if < 6 hours old
-// This avoids API calls during the demo and handles offline gracefully
+//
+// Cache the last response in DataStore — re-use if < 6 hours old.
+// This avoids API calls during the demo and handles offline gracefully.
+// This is the ONLY component allowed to make a network call — and only public-equivalent
+// aggregate data leaves the device. Enforce the anonymisation in code, not just policy.
 ```
 
 ---
@@ -532,7 +583,7 @@ val SurfaceDark  = Color(0xFF1E1E1E)
 ### Floating Action Button (Home screen)
 ```
 Central FAB with two sub-actions (expandable):
-  🎙️ Voice entry
+  🎙️ Voice entry (whisper.cpp)
   📷 Scan bill
 Long press or type for text entry (default)
 ```
@@ -569,263 +620,170 @@ Add to AndroidManifest.xml:
 <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 ```
 
-Request at runtime using Accompanist Permissions. Request RECORD_AUDIO before showing voice button. Request CAMERA before opening scanner.
+Request at runtime using Accompanist Permissions. Request RECORD_AUDIO before recording
+audio for whisper. Request CAMERA before opening the scanner.
 
 ---
 
 ## 15. Implementation Phases
 
-### Phase 0 — Project Foundation (H0–2)
-**Goal:** The project builds, runs on the iQOO, DB layer works, and all three hardware
-assumptions are verified before a single feature line is written.
+> STATUS (2026-06-13): Phase 0 ✅ done & device-verified · Phase 1 ✅ done & device-verified
+> (§18 = 5/5). Currently entering Phase 2. SPIKE A ✅, SPIKE C ✅. SPIKE B replaced by the
+> whisper.cpp spike below (gates Phase 4).
 
-**Ask before starting:**
-```
-QUESTION [model-delivery]: How should the app get the Qwen2.5 3B model file?
-Options:
-  A) Push via ADB before demo: adb push model.gguf /sdcard/artha/model.gguf  (faster for hackathon)
-  B) Download on first launch from HuggingFace  (cleaner UX for judges)
-My recommendation: A for hackathon speed, B for judge impression. Your call.
-```
+### Phase 0 — Project Foundation  ✅ DONE
+**Goal:** Project builds, runs on iQOO, DB layer works, foundational spikes pass.
 
-Tasks:
-1. Set up `libs.versions.toml` with all dependencies (use Context7 to verify latest versions)
-2. Configure `build.gradle.kts` — Hilt plugin, Room KSP, serialization plugin
-3. Set up Hilt — `@HiltAndroidApp` on `ArthaApplication`
-4. Implement Room DB with SQLCipher (`ArthaDatabase.kt`) with all 5 entities and DAOs
-5. Implement Hilt `DatabaseModule` and `RepositoryModule`
-6. Implement all 5 repository interfaces and impls (stub implementations)
-7. Set up Navigation Compose with 4 tabs
-8. Set up brand theme (Color.kt, Type.kt, Theme.kt)
+Tasks (all complete): libs.versions.toml, build.gradle.kts (Hilt/Room KSP/serialization),
+Hilt @HiltAndroidApp, Room DB (v2) + DAOs, DatabaseModule + RepositoryModule, repository
+impls, Navigation Compose (4 tabs), brand theme.
 
-Then run these three verification spikes IN ORDER before any feature code:
+#### SPIKE A — LLM Backend Verification  ✅ PASSED
+llama-server (Qwen 2.5 3B) reachable on 127.0.0.1:8080; parse returns valid output.
+ACTION ITEM (carried into Phase 6): prove the server runs ON-DEVICE with airplane mode on.
 
----
+#### SPIKE B — Whisper On-Device ASR Verification  ⏳ (gates Phase 4)
+(Supersedes the old Android SpeechRecognizer spike. We no longer depend on OriginOS
+offline system STT.)
+1. Build whisper.cpp for Android (CMake + NDK) — use Context7 for setup
+2. Bundle ggml-tiny.bin in assets or push via ADB
+3. Record a 5s Hindi clip ("दो किलो चावल अस्सी रुपये"), transcribe it
+   **Pass:** recognisable Hindi/Hinglish text returned in < 2s, offline.
+   **Fail:** fall back to Android SpeechRecognizer (EXTRA_PREFER_OFFLINE=true), OR set
+   VOICE_ENABLED=false and ship typed entry only. Typed entry already covers the core loop —
+   do not let voice block the demo.
 
-#### SPIKE A — LLM Backend Verification (run once model is loaded)
-
-Add a temporary `DebugViewModel` or run inline from `MainActivity.onCreate`:
-
-```kotlin
-// Run this once in Phase 0, remove before Phase 6 demo hardening
-private fun verifyLlmBackend() {
-    lifecycleScope.launch(Dispatchers.IO) {
-        val start = System.currentTimeMillis()
-        val result = llmEngine.generate("Say: OK")
-        val elapsed = System.currentTimeMillis() - start
-
-        Log.d("ARTHA_SPIKE", "=== LLM BACKEND VERIFY ===")
-        Log.d("ARTHA_SPIKE", "First inference: ${elapsed}ms | Output: $result")
-
-        // Interpret:
-        // elapsed < 2000ms  → GPU backend (Adreno 840) ✅
-        // elapsed 2000-5000ms → GPU backend, cold start ✅
-        // elapsed > 8000ms  → CPU fallback ⚠️ — force GPU delegate via Context7 docs
-
-        withContext(Dispatchers.Main) {
-            Toast.makeText(this@MainActivity,
-                "LLM: ${elapsed}ms", Toast.LENGTH_LONG).show()
-        }
-    }
-}
-```
-
-**Pass:** Toast shows in < 5 seconds. Logcat shows output text.
-**Fail:** Crash or timeout → check model path and LiteRT-LM init params via Context7.
-
----
-
-#### SPIKE B — Hindi Offline STT Verification
-
-```kotlin
-// Temporary spike in MainActivity — remove after Phase 0 passes
-private val sttLauncher = registerForActivityResult(
-    ActivityResultContracts.StartActivityForResult()
-) { result ->
-    val text = result.data
-        ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-        ?.firstOrNull() ?: "NO RESULT"
-    Log.d("ARTHA_SPIKE", "STT: $text")
-    Toast.makeText(this, "STT: $text", Toast.LENGTH_LONG).show()
-}
-
-private fun verifyHindiStt() {
-    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "hi-IN")
-        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)  // ← CRITICAL
-        putExtra(RecognizerIntent.EXTRA_PROMPT, "हिंदी में बोलें")
-        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-    }
-    sttLauncher.launch(intent)
-}
-```
-
-**Test:** Turn airplane mode ON → call `verifyHindiStt()` → speak "दो किलो चावल"
-
-**Pass:** Toast shows Hindi text → implement full voice flow in Phase 4.
-**Fail:** Error or empty → set `VOICE_ENABLED = false` in BuildConfig. Phase 4 shows
-"Voice coming soon" UI. Do NOT debug STT during the hackathon — typed entry covers it.
-
----
-
-#### SPIKE C — OriginOS Battery Optimisation (ADB from Mac, run once)
-
+#### SPIKE C — OriginOS Battery Optimisation  ✅ PASSED
 ```bash
-# Run with phone connected via USB or Wi-Fi ADB
-# Re-run before every demo session (resets on restart)
-
 adb shell device_config put activity_manager max_phantom_processes 2147483647
 adb shell dumpsys deviceidle whitelist +com.artha.kirana
 adb shell cmd appops set com.artha.kirana RUN_IN_BACKGROUND allow
 adb shell cmd appops set com.artha.kirana RUN_ANY_IN_BACKGROUND allow
-
-# Verify it worked:
-adb shell dumpsys jobscheduler | grep "com.artha.kirana"
-# Must show jobs — if empty, WorkManager alerts will NOT fire
+adb shell dumpsys jobscheduler | grep "com.artha.kirana"   # must show jobs
 ```
-
-Manual fallback on device:
-```
-Settings → Apps → Artha Kirana → Battery → Unrestricted
-Settings → Apps → Artha Kirana → Auto-start → ON
-```
-
-**Pass:** `dumpsys jobscheduler` shows your package. Inventory alerts survive screen-off.
-**Fail:** Re-run ADB commands. If still failing, add the manual instructions to onboarding.
+Re-run before every demo session (resets on restart).
 
 ---
 
-**Phase 0 Checkpoint:** All three spikes pass. App launches. DB initialises. Navigation works.
-Model loads and returns a token. Record the SPIKE A elapsed time as a comment in `LlmEngine.kt`.
+### Phase 1 — Core Sale Entry Loop  ✅ DONE & VERIFIED (§18 = 5/5)
+Type a Hindi/Hinglish sale → LLM parses → editable confirmation card → Room save →
+Home updates reactively. Revenue (today) aggregates correctly and excludes repayments.
 
 ---
 
-### Phase 1 — Core Sale Entry Loop (H2–8)
-**Goal:** Type a Hindi sale sentence → LLM parses it → entry in DB → home screen shows it.
-
-Tasks:
-1. Implement `LlmEngine.kt` — singleton, LiteRT-LM wrapper with sale parser system prompt
-2. Implement `JsonParser.kt` — safe JSON extraction with fallback
-3. Implement `SaleEntry` domain model and `ParseSaleEntryUseCase`
-4. Implement `LogSaleUseCase` — writes sale, updates item stock, updates khata balance
-5. Build `SaleEntryScreen` — text input, parse button, confirmation card
-6. Build `HomeScreen` — today's total, recent entries list
-7. Build `HomeViewModel` with StateFlow
-8. Wire `LogSaleUseCase` through ViewModel to screen
-
-**Validation:** Run all 5 test cases from PRD Section 8 test cases. >90% must parse correctly.
-
-**Checkpoint:** Type "दो किलो चावल अस्सी रुपये उधार रमेश" → confirmation card → DB entry → home screen updates.
-
----
-
-### Phase 2 — Inventory + Khata + P&L (H8–14)
+### Phase 2 — Inventory + Khata + P&L  ⬅ CURRENT
 **Goal:** Complete shop management loop — sale in, stock down, khata updated, profit shown.
 
 Tasks:
 1. Build `InventoryScreen` — item list with stock levels, low-stock highlighting
-2. Build `AddItemSheet` — bottom sheet for adding new items with cost/sell price/threshold
-3. Implement `InventoryAlertWorker` — WorkManager periodic check, notification on low stock
+2. Build `AddItemSheet` — bottom sheet for adding items (cost/sell price/threshold)
+3. Implement `InventoryAlertWorker` — WorkManager periodic check, low-stock notification
 4. Build `KhataScreen` — party list with outstanding balances
 5. Build `KhataPartyDetail` — transaction history for one party
 6. Implement `GetPnlSummaryUseCase` with Room queries
 7. Build `PnlScreen` — today/week/month tabs, gross revenue/cost/profit cards
-8. Add `ProfitChart` using Vico — daily revenue bar chart for the week
+8. Add `ProfitChart` using Vico — daily revenue bar chart (verify Kotlin-compatible version)
 9. Wire all ViewModels
 
-**Ask if needed:** "Does the low-stock notification need to go away once the user restocks, or should it persist until dismissed?"
+**Ask if needed:** "Should the low-stock notification clear automatically once the user
+restocks, or persist until dismissed?"
 
-**Checkpoint:** Log 10 varied sales → inventory counts correctly → khata shows correct balances → P&L arithmetic verified.
+**Checkpoint:** Log 10 varied sales → inventory counts correctly → khata balances correct
+→ P&L arithmetic verified.
 
 ---
 
-### Phase 3 — Bill Scanning (H14–18)
+### Phase 3 — Bill Scanning
 **Goal:** Snap a supplier bill → ML Kit reads it → LLM parses items → inventory updated.
 
 Tasks:
-1. Add CameraX composable to `BillScanScreen` — use Context7 for latest Compose CameraX API
-2. Implement image capture → `BillOcrEngine` (ML Kit TextRecognizer)
-3. Implement `BillParser` — OCR text → LLM with bill-parsing system prompt
-4. Build `ScanConfirmSheet` — review parsed line items, allow editing
+1. Add CameraX composable to `BillScanScreen` — Context7 for latest Compose CameraX API
+2. Image capture → `BillOcrEngine` (ML Kit TextRecognizer)
+3. `BillParser` — OCR text → LLM with bill-parsing system prompt
+4. `ScanConfirmSheet` — review parsed line items, allow editing
 5. Wire `LogPurchaseUseCase` on confirm → inventory updated + purchase cost logged
 
-**Ask if needed:** "The OCR + LLM chain takes 3-6 seconds. Should I show a loading skeleton or a progress indicator?"
+**Ask if needed:** "OCR + LLM takes 3–6s. Loading skeleton or progress indicator?"
 
-**Checkpoint:** Snap any printed receipt → items appear in confirmation sheet → confirm → inventory increases.
+**Checkpoint:** Snap a printed receipt → items in confirmation sheet → confirm → stock up.
 
 ---
 
-### Phase 4 — Voice Input & Vernacular Output (H18–22)
-**Goal:** Speak a sale in Hindi → parsed → logged. Daily summary spoken back.
+### Phase 4 — Voice Input (whisper.cpp) + Vernacular Output
+**Goal:** Speak a sale in Hindi → transcribed on-device → parsed → logged. Summary spoken back.
+GATED ON SPIKE B (whisper.cpp build).
 
 Tasks:
-1. Implement `SpeechRecognizerManager` — offline Hindi STT, sealed state class
-2. Add `VoiceEntryButton` FAB with listening animation (use Compose animate APIs)
-3. Wire voice text into existing `ParseSaleEntryUseCase` (same pipeline as typed)
+1. Implement `AudioRecorder` (16kHz mono) + `WhisperEngine` (whisper.cpp JNI transcribe)
+2. Add `VoiceEntryButton` FAB with recording animation (Compose animate APIs)
+3. Wire transcribed text into the existing `ParseSaleEntryUseCase` (same pipeline as typed)
 4. Implement `TextToSpeechManager` — Hindi TTS singleton
-5. Add "Hear summary" button on Home screen → TTS reads today's P&L in Hindi
+5. Add "Hear summary" button on Home → TTS reads today's P&L in Hindi
 6. Add vernacular language selector in settings
 
-**If voice STT fails offline:** Replace voice button with a "Coming soon" state and log a TODO. Do not block the demo.
+**If whisper build is too costly:** fall back to Android SpeechRecognizer, or show
+"Voice coming soon" and ship typed-only. Do not block the demo on voice.
 
-**Checkpoint:** Speak "तीन साबुन बीस-बीस के" → parsed correctly → logged. TTS reads "आज की बिक्री..." on tap.
+**Checkpoint:** Speak "तीन साबुन बीस-बीस के" → transcribed → parsed → logged.
+TTS reads "आज की बिक्री..." on tap.
 
 ---
 
-### Phase 5 — Market Trends Insights (H22–25)
-**Goal:** Claude API generates 3-5 insights from anonymised sales history.
+### Phase 5 — Market Trends Insights (Claude API)
+**Goal:** Claude API generates 3–5 insights from anonymised sales history.
 
 Tasks:
 1. Implement `ClaudeApiClient` with Ktor — POST to /v1/messages
-2. Build anonymised sales aggregation query (item name + qty only — no amounts, no parties)
-3. Implement `GetMarketInsightsUseCase` — calls Claude API, caches in DataStore for 6 hours
-4. Build `InsightsScreen` — insight cards in Hindi/English
+2. Anonymised sales aggregation query (item name + qty only — no amounts, no parties)
+3. `GetMarketInsightsUseCase` — calls Claude API, caches in DataStore for 6 hours
+4. `InsightsScreen` — insight cards in Hindi/English
 5. Add Insights tab to bottom nav
 
-**Ask before implementing:** "Do you have a Claude API key ready to inject? Where should it be stored — hardcoded for hackathon or in a local.properties file?"
+**Ask before implementing:** "Do you have a Claude API key ready? Store it hardcoded for
+the hackathon or in local.properties?"
 
-**Checkpoint:** Insights screen shows 3 cards in Hinglish based on seeded sales data. Works on cached response when offline.
+**Checkpoint:** Insights screen shows 3 Hinglish cards from seeded data. Works on cached
+response when offline.
 
 ---
 
-### Phase 6 — Demo Hardening (H25–30)
-**Goal:** Zero crashes in 3 full demo runs. Airplane mode. Real seeded data.
+### Phase 6 — Demo Hardening
+**Goal:** Zero crashes in 3 full demo runs. Airplane mode. On-device server proven. Real seeded data.
 
 Tasks:
-1. Seed realistic demo data — `DemoDataSeeder.kt` called once on first launch in debug builds
-   - 15 sales across 5 items (rice, sugar, oil, soap, biscuits)
-   - 3 credit entries for "Ramesh", "Priya", "Suresh"
-   - 2 purchases (restocks)
-   - One item near reorder threshold
-2. Add "Fix battery optimisation" setting — deep link to OriginOS power settings
-3. Test all 5 LLM test cases — fix any failures
-4. Test bill scanning with 3 different real receipt photos
-5. Test voice entry offline (airplane mode) — verify graceful fallback
-6. Fix any keyboard/back navigation issues
-7. Add error states everywhere — no empty screens, no crashes on null data
-8. Run 3 complete demo walkthroughs matching the 2-minute script from PRD
+1. **ON-DEVICE SERVER GATE (do FIRST):** airplane mode ON, disconnect Mac/USB, confirm a
+   sale parses end-to-end. If it fails, fixing the on-device llama-server is priority #1.
+   Document the untethered start in `docs/demo-runbook.md`.
+2. Seed realistic demo data — `DemoDataSeeder.kt` once on first launch (debug builds):
+   15 sales across 5 items (rice, sugar, oil, soap, biscuits); 3 credit entries
+   (Ramesh, Priya, Suresh); 2 purchases; one item near reorder threshold.
+3. Add "Fix battery optimisation" setting — deep link to OriginOS power settings
+4. Test all 5 §18 LLM cases — fix any regressions
+5. Test bill scanning with 3 different real receipt photos
+6. Test voice (whisper) offline, OR confirm graceful fallback
+7. Fix keyboard/back navigation issues
+8. Error states everywhere — no empty screens, no crashes on null data
+9. Run 3 complete demo walkthroughs matching the script below
 
 **DEMO SCRIPT (burn this into memory):**
-1. Airplane mode ON (show judges)
+1. Airplane mode ON (show judges) — and the llama-server is running ON the phone
 2. Type/speak sale in Hindi → parsed → ledger
 3. Credit entry for Ramesh → khata updates
 4. Snap a bill → items confirmed → inventory up
 5. P&L tab → "₹X gross profit today"
 6. Low-stock notification fires
-7. Network ON → Insights tab → 3 Claude insights
+7. (Only now) Network ON → Insights tab → 3 Claude insights
 8. Close: "Everything except the last screen ran on the iQOO. Nothing left this phone."
 
 ---
 
 ## 16. Coding Standards
 
-- **Kotlin idioms only** — no Java-style nullability, use `?.` and `?:`
-- **No hardcoded strings** — all UI text in `strings.xml` with Hindi variants in `values-hi/strings.xml`
+- **Kotlin idioms only** — use `?.` and `?:`, no Java-style null handling
+- **No hardcoded strings** — UI text in `strings.xml` with Hindi variants in `values-hi/strings.xml`
 - **StateFlow everywhere** — no LiveData, no callbacks in UI layer
-- **`collectAsStateWithLifecycle`** — not `collectAsState` (lifecycle-aware)
-- **Coroutines only** — no threads, no AsyncTask, no RxJava
+- **`collectAsStateWithLifecycle`** — not `collectAsState`
+- **Coroutines only** — no threads, AsyncTask, or RxJava
 - **Hilt for everything** — no manual DI, no singletons outside Hilt modules
 - **Sealed classes for UI state:**
   ```kotlin
@@ -835,7 +793,8 @@ Tasks:
       data class Error(val message: String) : UiState<Nothing>()
   }
   ```
-- **Never call LLM on main thread** — always `withContext(Dispatchers.IO)`
+- **Never call the LLM or whisper on the main thread** — always `withContext(Dispatchers.IO)`
+- **Never run whisper and the LLM simultaneously** — sequence them (memory bandwidth)
 - **Room queries return Flow** — let the UI react to DB changes automatically
 
 ---
@@ -851,6 +810,8 @@ Do not implement, do not mention to user as in scope:
 - ONDC integration
 - User authentication / login
 - Cloud sync or backup
+- IndicBERT or any encoder/classifier model — evaluated and rejected: it cannot generate
+  the structured JSON the parser needs. Qwen 2.5 3B is the parser. (Note for judges only.)
 
 If asked about any of these: "That's on the roadmap after the hackathon — out of scope for the 30-hour build."
 
@@ -858,7 +819,7 @@ If asked about any of these: "That's on the roadmap after the hackathon — out 
 
 ## 18. Quick Reference — LLM Test Cases
 
-Always validate these before demo:
+Always validate these before demo (currently 5/5, stable across 3 runs):
 | Input | Expected type | Expected party |
 |---|---|---|
 | "दो किलो चावल, अस्सी रुपये, उधार रमेश को" | credit | Ramesh |
@@ -867,8 +828,9 @@ Always validate these before demo:
 | "teen soap bees-bees ke credit Priya" | credit | Priya |
 | "chawal aur daal kul 120" | cash | null |
 
-If any test case fails: adjust the system prompt temperature/stop-tokens first. If still failing: check Context7 for LiteRT-LM inference parameter docs.
+If a case regresses: tighten the system prompt first (keep `LlmEngine.SALE_SYSTEM_PROMPT`
+and any validation script in sync). Only then touch temperature/stop-tokens.
 
 ---
 
-*Artha Kirana · CLAUDE.md · iQOO Hackathon 2026 · v1.0*
+*Artha Kirana · CLAUDE.md · iQOO Hackathon 2026 · v1.1 (Whisper + on-device-server requirement)*

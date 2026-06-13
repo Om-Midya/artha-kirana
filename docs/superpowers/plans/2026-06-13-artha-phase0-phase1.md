@@ -1,18 +1,20 @@
 # Artha Kirana — Phase 0 + Phase 1 Implementation Plan
 
+> **Status (historical):** Phase 0 + Phase 1 are DONE & device-verified. This plan is kept for reference. Current state: `docs/STATUS.md`; canonical spec: `CLAUDE.md`. Note `CLAUDE.md` has since changed voice to **whisper.cpp** (SPIKE B redefined) and added a **hard on-device-server requirement** — follow `CLAUDE.md` for Phases 2–6, not the older SPIKE/voice wording below.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Stand up the Artha Kirana foundation (Gradle, Hilt, Room, Navigation, theme) and the first demoable slice — type a Hindi sale → on-device LLM (llama-server over localhost HTTP) parses it → Room DB → Home screen updates.
 
-**Architecture:** Clean Architecture (data/domain/ui) + MVVM + StateFlow + single-Activity Navigation Compose. The on-device LLM is **not** in-process — `LlmEngine` is a **Ktor HTTP client** that POSTs to `http://127.0.0.1:8080/v1/chat/completions`, where `llama-server` serves Qwen 2.5 3B on the phone. The cloud Claude API (later phases) reuses the same Ktor pattern. See `docs/superpowers/specs/2026-06-13-artha-llm-http-architecture-design.md` and `CLAUDE-1.md`.
+**Architecture:** Clean Architecture (data/domain/ui) + MVVM + StateFlow + single-Activity Navigation Compose. The on-device LLM is **not** in-process — `LlmEngine` is a **Ktor HTTP client** that POSTs to `http://127.0.0.1:8080/v1/chat/completions`, where `llama-server` serves Qwen 2.5 3B on the phone. The cloud Claude API (later phases) reuses the same Ktor pattern. See `docs/superpowers/specs/2026-06-13-artha-llm-http-architecture-design.md` and `CLAUDE.md`.
 
 **Tech Stack:** Kotlin 2.0.21, Jetpack Compose (BOM 2024.09), Material 3, Hilt, Room (KSP, no SQLCipher yet), Navigation Compose, Ktor (OkHttp engine) + kotlinx.serialization, Accompanist Permissions, Timber.
 
 > **Toolchain deviation (applied during execution):** the scaffold shipped **AGP 9.0.1 / Gradle 9.2.1**, which is incompatible with Hilt + KSP + Compose (Hilt only added AGP-9 support in 2.59+, shipped broken; Compose wants AGP ≥ 9.2). We downgraded to **AGP 8.13.0 / Gradle 8.13** — the last stable 8.x and the combo the spec's libraries were written against (`compileSdk 36` needs AGP ≥ 8.9). Also: removed the AGP-9 `gradle-daemon-jvm.properties` (JDK-21 pin) to run the daemon on the launching JDK 17; changed the `compileSdk` DSL from the AGP-9 `release(36){}` block to `compileSdk = 36`; restored `distributionSha256Sum` for the 8.13 wrapper (verified official checksum). **Vico (charts) is deferred to Phase 2** — 3.1.0 requires Kotlin 2.3.x; pick a Kotlin-2.0-compatible version there.
 
 **Source-of-truth docs:**
-- `CLAUDE-1.md` — canonical spec (DB schema §4, prompts §5, JSON safety §6, P&L §10, coding standards §16, test cases §18).
-- Design doc (above) — the LLM-over-HTTP delta. Where it disagrees with `CLAUDE-1.md`, the design doc wins.
+- `CLAUDE.md` — canonical spec (DB schema §4, prompts §5, JSON safety §6, P&L §10, coding standards §16, test cases §18).
+- Design doc (above) — the LLM-over-HTTP delta. Where it disagrees with `CLAUDE.md`, the design doc wins.
 
 **Per the spec §0:** before writing code against any library, confirm its current API via Context7. Ktor (OkHttp engine + `ContentNegotiation`/`json()`) and Vico (3.1.0, `CartesianChartHost`) were verified during planning. Verify Room/KSP, Hilt, Navigation, CameraX, ML Kit at the phase they first appear.
 
@@ -388,7 +390,7 @@ fun ArthaTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable 
 **Files:**
 - Create: `data/db/entity/{ItemEntity,SaleEntity,PurchaseEntity,KhataEntity,KhataTransactionEntity}.kt`
 
-- [ ] **Step 1: Create the 5 entities** exactly as `CLAUDE-1.md` §4 (package `com.artha.kirana.data.db.entity`). Reproduce all fields verbatim — `ItemEntity`, `SaleEntity`, `PurchaseEntity`, `KhataEntity`, `KhataTransactionEntity` (with the two `@ForeignKey`s on `KhataTransactionEntity`). Do not alter column names; P&L queries depend on them.
+- [ ] **Step 1: Create the 5 entities** exactly as `CLAUDE.md` §4 (package `com.artha.kirana.data.db.entity`). Reproduce all fields verbatim — `ItemEntity`, `SaleEntity`, `PurchaseEntity`, `KhataEntity`, `KhataTransactionEntity` (with the two `@ForeignKey`s on `KhataTransactionEntity`). Do not alter column names; P&L queries depend on them.
 
 - [ ] **Step 2: Build** — `./gradlew :app:assembleDebug`. Expected: SUCCESSFUL (entities compile standalone).
 
@@ -506,7 +508,7 @@ echo "llama-server starting on the phone (port 8080). Tail: adb shell tail -f /s
 
 ### Task 0.10: SPIKE B — Hindi offline STT (unchanged from spec)
 
-- [ ] **Step 1:** Add the temporary `verifyHindiStt()` + `sttLauncher` from `CLAUDE-1.md` §15 SPIKE B to `MainActivity`.
+- [ ] **Step 1:** Add the temporary `verifyHindiStt()` + `sttLauncher` from `CLAUDE.md` §15 SPIKE B to `MainActivity`.
 - [ ] **Step 2:** Turn airplane mode ON. Trigger it. Speak "दो किलो चावल".
 - [ ] **Step 3: Pass** = Toast/Logcat shows Hindi text → keep `VOICE_ENABLED=true`. **Fail** = error/empty → set `buildConfigField VOICE_ENABLED=false` in Task 0.2; Phase 4 shows "Voice coming soon". Do NOT debug STT during the hackathon.
 - [ ] **Step 4:** Remove the temporary code. Commit: `git commit -am "chore: SPIKE B Hindi offline STT result recorded"`
@@ -515,7 +517,7 @@ echo "llama-server starting on the phone (port 8080). Tail: adb shell tail -f /s
 
 ### Task 0.11: SPIKE C — OriginOS battery (ADB, from Mac)
 
-- [ ] **Step 1:** Run the 4 ADB commands from `CLAUDE-1.md` §15 SPIKE C (`device_config`, `deviceidle whitelist`, two `appops`).
+- [ ] **Step 1:** Run the 4 ADB commands from `CLAUDE.md` §15 SPIKE C (`device_config`, `deviceidle whitelist`, two `appops`).
 - [ ] **Step 2: Verify** — `adb shell dumpsys deviceidle whitelist | grep com.artha.kirana` shows the package.
 - [ ] **Step 3:** Document the manual fallback (Settings → Apps → Artha → Battery Unrestricted / Auto-start ON) in a `docs/demo-runbook.md`. Commit.
 
@@ -556,7 +558,7 @@ class JsonParserTest {
 
 - [ ] **Step 2: Run, verify fail** — `./gradlew :app:testDebugUnitTest --tests "*JsonParserTest"`. Expected: FAIL (unresolved `JsonParser`).
 
-- [ ] **Step 3: Implement** (`CLAUDE-1.md` §6, hardened to find outermost braces)
+- [ ] **Step 3: Implement** (`CLAUDE.md` §6, hardened to find outermost braces)
 
 ```kotlin
 package com.artha.kirana.util
@@ -716,7 +718,7 @@ object NetworkModule {
 
 # PHASES 2–6 — Roadmap (expand each into its own plan when reached)
 
-Each phase below gets its own bite-sized plan generated at phase start (re-invoke writing-plans), following `CLAUDE-1.md` §15 task lists with these architecture-specific notes:
+Each phase below gets its own bite-sized plan generated at phase start (re-invoke writing-plans), following `CLAUDE.md` §15 task lists with these architecture-specific notes:
 
 - **Phase 2 — Inventory + Khata + P&L.** Build `InventoryScreen` + `AddItemSheet` + low-stock highlighting; `InventoryAlertWorker` (WorkManager periodic 30min → notification, gated by SPIKE C); `KhataScreen` + `KhataPartyDetail`; `GetPnlSummaryUseCase` (Room aggregate queries §10, computed not stored); `PnlScreen` with **Vico 3.1.0** `CartesianChartHost` + `rememberColumnCartesianLayer` + `CartesianChartModelProducer.runTransaction { columnSeries { series(...) } }` (verified API) for a weekly revenue bar chart. Context7: Vico done, verify WorkManager.
 
@@ -734,5 +736,5 @@ Each phase below gets its own bite-sized plan generated at phase start (re-invok
 
 - **Spec coverage:** Phase 0 covers spec §15 Phase 0 (foundation + 3 spikes, SPIKE A rewritten per design §2.3). Phase 1 covers §15 Phase 1 (LlmEngine→parse→DB→Home) + §6 JsonParser + §18 validation. §4 entities, §5 prompts, §16 standards applied. Phases 2–6 mapped to roadmap with architecture notes. No spec section dropped except SQLCipher (explicitly deferred, design §3.1) and in-process LLM (replaced by HTTP, design §2).
 - **Type consistency:** `LlmHttpClient.chat(system,user)` / `health()` used consistently in Tasks 1.2–1.3; `LogSaleUseCase` repo method names (`logSale`, `decrementStock`, `applyCredit`/`applyRepayment`) consistent across Tasks 0.6/1.4. `SaleEntry` fields match §5 schema.
-- **TDD adaptation:** unit-tested where cheap (JsonParser, DTOs, SaleParser, LogSaleUseCase); build-verify + manual checkpoint for Compose/Hilt/Room wiring — honors `CLAUDE-1.md` phase-gate model (user spec = highest priority).
+- **TDD adaptation:** unit-tested where cheap (JsonParser, DTOs, SaleParser, LogSaleUseCase); build-verify + manual checkpoint for Compose/Hilt/Room wiring — honors `CLAUDE.md` phase-gate model (user spec = highest priority).
 - **Open item for user:** Phase 5 needs the Claude API key decision (deferred to that phase per spec).

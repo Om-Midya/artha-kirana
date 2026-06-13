@@ -56,7 +56,7 @@ Re-run with a tune harness (POST each case to `/v1/chat/completions`, compare ty
 **Fix that closed the gap:** added a §5 rule to strip Hindi postpositions from the party name
 ("रमेश को" → "रमेश"). Party for Hindi input is stored in Devanagari (रमेश ≡ Ramesh).
 
-## 2-minute demo script (CLAUDE-1.md §15 Phase 6)
+## 2-minute demo script (CLAUDE.md §15 Phase 6)
 
 1. Airplane mode ON (show judges).
 2. Type/speak a sale in Hindi → parsed → ledger.

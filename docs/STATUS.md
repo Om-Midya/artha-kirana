@@ -25,11 +25,11 @@
 ## Spikes
 
 - **SPIKE A** (LLM connectivity) ✅ · **SPIKE C** (OriginOS battery whitelist) ✅
-- **SPIKE B** (Hindi offline STT) ⏳ **needs the user** — must speak into the phone in airplane mode; run before Phase 4. Until then `VOICE_ENABLED=true` (optimistic default).
+- **SPIKE B** (whisper.cpp on-device ASR) ⏳ — per the updated `CLAUDE.md` §15, voice is now **whisper.cpp via JNI**, not Android SpeechRecognizer. Spike = build whisper.cpp for Android (NDK/CMake) + transcribe a Hindi clip offline. Gates Phase 4. Fallback: SpeechRecognizer `EXTRA_PREFER_OFFLINE`, or typed-only.
 
 ## Key decisions / deviations
 
-- **LLM = localhost HTTP** to `llama-server`, not in-app LiteRT/JNI (design doc). App is not self-contained — server started via ADB (tethered-demo).
+- **LLM = localhost HTTP** to `llama-server` (Qwen 2.5 3B) on `127.0.0.1:8080`, not in-app LiteRT/JNI. The server runs **on the phone** (the app hits phone-loopback — no Mac/tether at runtime). **`CLAUDE.md` §1 hard requirement: the server must run ON the iQOO, never on a tethered Mac.** Today it's *started* via an `adb shell` command, but the process is phone-side and survives unplugging. The **Phase 6 airplane-mode gate** (unplug, confirm a sale still parses) proves this; for a tether-free *start*, use Termux or a phone-side launcher. `adb forward` is used only by the Mac-side prompt-validation harness, never the app.
 - **AGP 9.0.1 → 8.13.0** (AGP 9 breaks Hilt/KSP/Compose).
 - **SQLCipher deferred** behind a swap-in seam in `DatabaseModule`.
 - **Vico (charts) deferred to Phase 2** — 3.1.0 needs Kotlin 2.3.x; pick a Kotlin-2.0-compatible version.
@@ -37,6 +37,7 @@
 
 ## Known issues / follow-ups
 
+- **On-device-server gate (Phase 6, CLAUDE.md §1/§6):** prove a sale parses with airplane mode ON and the Mac unplugged. Provide a tether-free start (Termux / phone-side launcher) — the `adb shell` start is fine for dev but the demo must not depend on a laptop.
 - Model occasionally varies on `type` under sampling (temp 0.1); §18 currently 5/5 but watch edge cases.
 - `validate-sale-prompt.py`'s `SYSTEM_PROMPT` must be kept in sync with `LlmEngine.SALE_SYSTEM_PROMPT`.
 - SQLCipher not enabled (deferred).
@@ -44,7 +45,7 @@
 ## Docs map
 
 - `HANDOFF.md` — start here (pickup guide).
-- `docs/superpowers/specs/2026-06-13-artha-llm-http-architecture-design.md` — architecture (delta over `CLAUDE-1.md`).
+- `docs/superpowers/specs/2026-06-13-artha-llm-http-architecture-design.md` — architecture (delta over `CLAUDE.md`).
 - `docs/superpowers/plans/2026-06-13-artha-phase0-phase1.md` — Phase 0/1 plan + Phase 2–6 roadmap.
 - `docs/demo-runbook.md` — start-server, battery, §18 results, demo script.
-- `CLAUDE-1.md` — canonical full spec.
+- `CLAUDE.md` — canonical full spec.

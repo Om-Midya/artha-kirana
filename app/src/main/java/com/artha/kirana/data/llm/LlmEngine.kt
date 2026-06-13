@@ -25,7 +25,7 @@ class LlmEngine @Inject constructor(
     }
 
     companion object {
-        // CLAUDE-1.md §5, plus one §18-driven rule (party postposition stripping) added in Task 1.7.
+        // CLAUDE.md §5, plus one §18-driven rule (party postposition stripping) added in Task 1.7.
         // Validated 5/5 on §18 cases against Qwen 2.5 3B. Re-run /tmp/tune.py-style harness if you change this.
         const val SALE_SYSTEM_PROMPT = """You are a kirana store billing assistant. Parse the input into JSON only.
 Return ONLY the JSON object. No explanation. No markdown. No preamble.

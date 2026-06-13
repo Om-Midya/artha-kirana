@@ -1,6 +1,6 @@
 # Handoff — Artha Kirana
 
-Offline-first AI assistant for kirana shop owners. Speak/type a sale in Hindi → on-device LLM parses it → Room ledger/inventory/khata → vernacular summary. Built for the iQOO 15 (Snapdragon 8 Elite). Full spec: `CLAUDE-1.md`. Current state: `docs/STATUS.md`.
+Offline-first AI assistant for kirana shop owners. Speak/type a sale in Hindi → on-device LLM parses it → Room ledger/inventory/khata → vernacular summary. Built for the iQOO 15 (Snapdragon 8 Elite). Full spec: `CLAUDE.md`. Current state: `docs/STATUS.md`.
 
 ## TL;DR — get running (~2 min)
 
@@ -21,7 +21,7 @@ Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlo
 ## State
 
 - ✅ **Phase 0** (foundation + SPIKE A/C) and **Phase 1** (full sale loop, §18 = 5/5) — done, device-verified.
-- ⏳ **SPIKE B** (Hindi offline STT) — needs the user to speak in airplane mode; do before Phase 4.
+- ⏳ **SPIKE B** (whisper.cpp on-device ASR) — voice is now **whisper.cpp via JNI** (updated `CLAUDE.md` §8), not Android SpeechRecognizer. Spike = build whisper.cpp for Android + transcribe a Hindi clip offline. Gates Phase 4.
 - ⬜ **Next: Phase 2** (Inventory / Khata / P&L). Plan + roadmap: `docs/superpowers/plans/2026-06-13-artha-phase0-phase1.md`. Use a **Kotlin-2.0-compatible Vico** (NOT 3.1.0 — needs Kotlin 2.3).
 - Work on branch `feat/phase0-foundation` (9 commits off `main`).
 
@@ -29,6 +29,7 @@ Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlo
 
 - **Toolchain is pinned to AGP 8.13 / Gradle 8.13 on purpose.** AGP 9 breaks Hilt + KSP + Compose. Don't "upgrade" it.
 - **llama-server must be running** for any parse. If it's down the app degrades gracefully (manual-entry fallback). Logs: `adb shell tail -f /sdcard/Download/llama-server.log`. Stop: `adb shell "pkill -f llama-server"`.
+- **HARD REQUIREMENT (`CLAUDE.md` §1): the server runs ON the iQOO, never on a tethered Mac.** It already does — the app hits phone-loopback (`127.0.0.1:8080`), and the server process survives unplugging. Only the *start command* is currently `adb shell` from the Mac; for the demo, start it then unplug, or use a phone-side launcher (Termux). **Phase 6 gate:** airplane mode ON + Mac unplugged → a sale must still parse.
 - **Use `llama-completion`/`llama-server`, never `llama-cli`** (b9620 `llama-cli` hangs over adb). Binaries are thin wrappers — `LD_LIBRARY_PATH=.` is mandatory (handled by the start script).
 - **Validate prompt changes** with `scripts/validate-sale-prompt.py` (needs `adb forward tcp:8080 tcp:8080`). It sends Devanagari over HTTP — `adb input text` can't. Keep its `SYSTEM_PROMPT` in sync with `LlmEngine.SALE_SYSTEM_PROMPT`.
 - **Room is at version 2** with `fallbackToDestructiveMigration` — schema changes wipe dev data.
