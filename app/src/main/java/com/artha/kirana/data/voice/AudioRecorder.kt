@@ -19,6 +19,9 @@ class AudioRecorder @Inject constructor() {
 
     companion object {
         const val SAMPLE_RATE = 16_000
+
+        // int16 RMS below this is effectively silence (speech is typically > 1000).
+        private const val SILENCE_RMS = 200.0
     }
 
     /** Caller MUST hold RECORD_AUDIO before invoking. */
@@ -55,6 +58,15 @@ class AudioRecorder @Inject constructor() {
                 runCatching { recorder.stop() }
                 recorder.release()
             }
+            // Reject near-silent captures — whisper hallucinates text on silence/noise.
+            var sumSq = 0.0
+            for (i in 0 until total) {
+                val s = pcm[i].toDouble()
+                sumSq += s * s
+            }
+            val rms = if (total > 0) kotlin.math.sqrt(sumSq / total) else 0.0
+            if (total == 0 || rms < SILENCE_RMS) return@withContext FloatArray(0)
+
             FloatArray(total) { (pcm[it] / 32767.0f).coerceIn(-1f, 1f) }
         }
 }

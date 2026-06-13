@@ -87,7 +87,7 @@ class SaleEntryViewModel @Inject constructor(
             try {
                 val samples = audioRecorder.record(maxSeconds = 12) { recording.get() }
                 if (samples.isEmpty()) {
-                    _voice.value = VoiceState.Idle
+                    _voice.value = VoiceState.Error("सुनाई नहीं दिया — फिर से बोलें")
                     return@launch
                 }
                 _voice.value = VoiceState.Transcribing

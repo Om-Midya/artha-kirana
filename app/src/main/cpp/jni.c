@@ -50,7 +50,12 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
-    params.single_segment = true;    // short sale utterances → one segment, faster
+    // single_segment=false keeps whisper's per-segment temperature fallback, which suppresses
+    // hallucinations (the news-fine-tuned model invents AIR-news phrases on unclear audio).
+    params.single_segment = false;
+    params.suppress_blank = true;
+    params.temperature_inc = 0.2f;   // enable confidence-based fallback decoding
+    params.no_speech_thold = 0.6f;   // drop segments that are probably silence
 
     whisper_reset_timings(context);
     if (whisper_full(context, params, audio, n) != 0) {
