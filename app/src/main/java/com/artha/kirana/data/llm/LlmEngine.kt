@@ -37,9 +37,9 @@ Schema:
 
 Field meaning:
 - item = the product name only (e.g. "चावल"). Never include a price or number in item.
-- qty = amount of product WITH its unit (e.g. "2 किलो", "3"). Never put the rupee price here.
+- qty = quantity WITH its unit in ENGLISH (e.g. "2 kg", "3", "1 dozen"). Never put the rupee price here.
 - amount = the total rupee PRICE as a plain number in digits.
-- party = person's name only. Strip "को/ko/ने/ne/से/se".
+- party = the person's name ONLY. Remove any को/ko/ने/ne/से/se tokens before AND after it (e.g. "रमेश को"→"रमेश", "ने रिया ने"→"रिया").
 
 Convert Hindi number words to digits:
 एक=1 दो=2 तीन=3 चार=4 पाँच=5 छह=6 सात=7 आठ=8 नौ=9 दस=10 ग्यारह=11 बारह=12
@@ -48,22 +48,28 @@ Convert Hindi number words to digits:
 Compounds add up: "दो सौ"=200, "दो सौ पचास"=250, "साढ़े तीन सौ"=350.
 Fractions: डेढ़=1.5 ढाई=2.5 सवा=1.25 पौने=0.75 आधा=0.5.
 
+Translate units to English: किलो/किलोग्राम=kg, ग्राम=g, लीटर=litre, मिलीलीटर=ml, दर्जन=dozen, पैकेट=packet, पाव=kg (पाव=0.25 kg), अद्धा=kg (अद्धा=0.5 kg).
+
 Rules:
 - type defaults to "cash". "उधार"/"udhaar" = "credit". "दिए"/"ne diya" = "repayment".
 - "X X के" (e.g. "बीस बीस के") = each unit costs X; set amount = qty × X.
 - ONE product = ONE entry. Do not split one product into multiple entries.
+- If NO rupee price is spoken, amount = null. NEVER invent a price from the quantity ("4 किलो" does NOT mean amount 40).
+- The party may come BEFORE the items (e.g. "रिया ने ..."). "लिया/लिया है" = that party took the goods.
 - Return ONLY valid JSON.
 
 Examples:
 Input: दो किलो चावल अस्सी रुपये
-{"entries":[{"item":"चावल","qty":"2 किलो","amount":80,"type":"cash","party":null}]}
+{"entries":[{"item":"चावल","qty":"2 kg","amount":80,"type":"cash","party":null}]}
 Input: रमेश को दस किलो आटा तीन सौ का उधार
-{"entries":[{"item":"आटा","qty":"10 किलो","amount":300,"type":"credit","party":"रमेश"}]}
+{"entries":[{"item":"आटा","qty":"10 kg","amount":300,"type":"credit","party":"रमेश"}]}
 Input: तीन साबुन बीस बीस के
 {"entries":[{"item":"साबुन","qty":"3","amount":60,"type":"cash","party":null}]}
 Input: रमेश ने पचास रुपये दिए
 {"entries":[{"item":null,"qty":null,"amount":50,"type":"repayment","party":"रमेश"}]}
 Input: ढाई किलो दाल नब्बे रुपये
-{"entries":[{"item":"दाल","qty":"2.5 किलो","amount":90,"type":"cash","party":null}]}"""
+{"entries":[{"item":"दाल","qty":"2.5 kg","amount":90,"type":"cash","party":null}]}
+Input: ने रिया ने चार किलो दाल और पांच किलो आलू लिया
+{"entries":[{"item":"दाल","qty":"4 kg","amount":null,"type":"cash","party":"रिया"},{"item":"आलू","qty":"5 kg","amount":null,"type":"cash","party":"रिया"}]}"""
     }
 }
