@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -79,6 +81,15 @@ fun ArthaApp() {
         bottomBar = {
             if (currentRoute in barRoutes) {
                 ArthaBottomBar(navController, currentRoute)
+            }
+        },
+        floatingActionButton = {
+            if (currentRoute == TopDest.Home.route) {
+                ExtendedFloatingActionButton(
+                    onClick = { navController.navigate(ROUTE_SALE_ENTRY) },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("New Sale") },
+                )
             }
         },
     ) { innerPadding ->
