@@ -16,4 +16,7 @@ interface KhataRepository {
 
     fun observeParty(id: Long): Flow<KhataEntity?>
     fun observeTransactions(id: Long): Flow<List<KhataTransactionEntity>>
+
+    /** Remove the khata transaction(s) created by [saleId] and undo their balance impact. */
+    suspend fun reverseSaleEffect(saleId: Long)
 }

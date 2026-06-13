@@ -13,4 +13,10 @@ interface KhataTransactionDao {
 
     @Query("SELECT * FROM khata_transactions WHERE partyId = :partyId ORDER BY timestamp DESC")
     fun observeForParty(partyId: Long): Flow<List<KhataTransactionEntity>>
+
+    @Query("SELECT * FROM khata_transactions WHERE saleId = :saleId")
+    suspend fun findBySaleId(saleId: Long): List<KhataTransactionEntity>
+
+    @Query("DELETE FROM khata_transactions WHERE saleId = :saleId")
+    suspend fun deleteBySaleId(saleId: Long)
 }

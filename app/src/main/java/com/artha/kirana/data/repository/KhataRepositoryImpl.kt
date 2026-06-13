@@ -25,6 +25,16 @@ class KhataRepositoryImpl @Inject constructor(
     override suspend fun applyRepayment(party: String, amount: Double, saleId: Long?) =
         adjust(party, delta = -amount, type = "repayment", saleId = saleId, amount = amount)
 
+    override suspend fun reverseSaleEffect(saleId: Long) {
+        txnDao.findBySaleId(saleId).forEach { t ->
+            val delta = if (t.type == "credit") t.amount else -t.amount // original balance impact
+            khataDao.findById(t.partyId)?.let { p ->
+                khataDao.update(p.copy(balance = p.balance - delta, lastUpdated = System.currentTimeMillis()))
+            }
+        }
+        txnDao.deleteBySaleId(saleId)
+    }
+
     private suspend fun adjust(party: String, delta: Double, type: String, saleId: Long?, amount: Double) {
         val existing = khataDao.findByName(party)
         val partyId = if (existing == null) {

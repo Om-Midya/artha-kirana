@@ -24,6 +24,9 @@ interface KhataDao {
     @Query("SELECT * FROM khata WHERE id = :id")
     fun observeById(id: Long): Flow<KhataEntity?>
 
+    @Query("SELECT * FROM khata WHERE id = :id")
+    suspend fun findById(id: Long): KhataEntity?
+
     @Query("SELECT COALESCE(SUM(balance), 0) FROM khata WHERE balance > 0")
     fun totalOutstanding(): Flow<Double>
 }
