@@ -1,6 +1,6 @@
 # Artha Kirana — Status
 
-**Updated:** 2026-06-13 · **Branch:** `feat/phase0-foundation` (off `main`) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+**Updated:** 2026-06-13 · **Branch:** `main` (Phase 0–2 merged) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
 
 ## Progress
 
@@ -8,9 +8,9 @@
 |---|---|
 | **Phase 0 — Foundation** | ✅ Done & device-verified |
 | **Phase 1 — Core sale loop** | ✅ Done & device-verified (incl. Task 1.7 §18 = 5/5) |
-| **Phase 2 — Inventory / Khata / P&L** | 🟡 Code complete (13/13 tasks, all unit tests green); device-verified Inventory/Khata/P&L screens + record-payment + worker pipeline. **Pending manual §15 walkthrough:** low-stock notification visual + LLM-sale-driven decrement/COGS. |
-| Phase 3 — Bill scanning | ⬜ Not started |
-| Phase 4 — Voice + vernacular | ⬜ Not started (gated on SPIKE B) |
+| **Phase 2 — Inventory / Khata / P&L** | ✅ Done & merged to `main` (13/13 tasks, final review clean, unit tests green). Device-verified screens + record-payment + worker pipeline. Owner-verifying two §15 visuals (low-stock notification fire/clear; LLM-sale decrement/COGS). |
+| Phase 3 — Bill scanning (OCR) | 🤝 In progress by a collaborator — **not this agent's scope** (do not touch ML Kit/CameraX/BillParser). |
+| **Phase 4 — Voice + vernacular** | 🔵 Starting (whisper.cpp JNI). NDK 27.1.12297006 + CMake 3.22.1 present. Gated on SPIKE B (build whisper.cpp + transcribe Hindi clip offline). |
 | Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
 | Phase 6 — Demo hardening | ⬜ Not started |
 

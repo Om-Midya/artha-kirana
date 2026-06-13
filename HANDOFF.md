@@ -1,52 +1,50 @@
 # Handoff — Artha Kirana
 
-Offline-first AI assistant for kirana shop owners. Speak/type a sale in Hindi → on-device LLM parses it → Room ledger/inventory/khata → vernacular summary. Built for the iQOO 15 (Snapdragon 8 Elite). Full spec: `CLAUDE.md`. Current state: `docs/STATUS.md`.
+Offline-first AI assistant for kirana shop owners. Speak/type a sale in Hindi → on-device LLM parses it → Room ledger/inventory/khata → vernacular summary. Built for the iQOO 15 (Snapdragon 8 Elite). Full spec: `CLAUDE.md`. Live state: `docs/STATUS.md`.
 
-## TL;DR — get running (~2 min)
+## Get running (~2 min)
 
 ```bash
 cd /Users/archismanmidya/AndroidStudioProjects/Artha
-adb devices                          # confirm iQOO 15 (10BFBG0CEL001DB)
-./scripts/start-llama-server.sh      # start Qwen 2.5 3B on the phone (127.0.0.1:8080)
-./gradlew :app:installDebug          # build + install (JDK 17, AGP 8.13)
+adb devices                          # iQOO 15 = 10BFBG0CEL001DB
+./scripts/start-llama-server.sh      # Qwen 2.5 3B on the phone (127.0.0.1:8080)
+./gradlew :app:installDebug          # JDK 17, AGP 8.13 (pinned)
 adb shell am start -n com.artha.kirana/.MainActivity
 ```
 
-Then tap **+ New Sale**, type e.g. `2 kilo sugar fifty rupees`, **Parse** → confirm. Home updates.
+## State (branch `main`)
 
-## Architecture in one paragraph
+- ✅ **Phase 0/1/2 done & merged.** Sale loop (type Hindi → on-device parse → confirm → Room → reactive Home, §18 = 5/5). Inventory (add/edit/restock + low-stock highlight), Khata (party list/detail + record-payment), P&L (today/week/month tabs + Vico chart), low-stock `InventoryAlertWorker`. Final review clean; unit tests green.
+- 🤝 **Phase 3 (OCR/bill scanning) — a collaborator owns this.** Don't touch ML Kit / CameraX / `BillParser` / `BillScanScreen`.
+- 🔵 **Phase 4 (voice) — next.** whisper.cpp via JNI (NOT Android SpeechRecognizer). Gated on SPIKE B (build whisper.cpp for Android + transcribe a Hindi clip offline). NDK 27.1.12297006 + CMake 3.22.1 are installed.
+- ⬜ Phase 5 (Claude market insights, needs API key), Phase 6 (demo hardening).
 
-Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlow, single-Activity Nav, Hilt, Room. **The LLM is not in-app** — `LlmEngine` → `LlmHttpClient` (Ktor) POSTs to `llama-server` (llama.cpp, Qwen 2.5 3B) on `http://127.0.0.1:8080/v1/chat/completions` (OpenAI-compatible). The cloud Claude API (Phase 5) reuses the same Ktor `NetworkModule`. `network_security_config.xml` permits cleartext to loopback only.
+## Architecture (one paragraph)
 
-## State
-
-- ✅ **Phase 0** (foundation + SPIKE A/C) and **Phase 1** (full sale loop, §18 = 5/5) — done, device-verified.
-- ⏳ **SPIKE B** (whisper.cpp on-device ASR) — voice is now **whisper.cpp via JNI** (updated `CLAUDE.md` §8), not Android SpeechRecognizer. Spike = build whisper.cpp for Android + transcribe a Hindi clip offline. Gates Phase 4.
-- ⬜ **Next: Phase 2** (Inventory / Khata / P&L). Plan + roadmap: `docs/superpowers/plans/2026-06-13-artha-phase0-phase1.md`. Use a **Kotlin-2.0-compatible Vico** (NOT 3.1.0 — needs Kotlin 2.3).
-- Work on branch `feat/phase0-foundation` (off `main`).
+Kotlin + Compose + Material3, Clean Arch (`data`/`domain`/`ui`), MVVM + StateFlow, single-Activity Nav, Hilt, Room (v2). **The LLM is not in-app** — `LlmEngine` → `LlmHttpClient` (Ktor) POSTs to `llama-server` (Qwen 2.5 3B) on `http://127.0.0.1:8080/v1/chat/completions`. Reads are Room `Flow`s → `stateIn` → `collectAsStateWithLifecycle`. WorkManager runs via Hilt (`@HiltWorker` + `Configuration.Provider`; default startup initializer removed in the manifest). The cloud Claude API (Phase 5) reuses `NetworkModule`. `network_security_config.xml` permits cleartext to loopback only.
 
 ## Gotchas (read before changing things)
 
-- **Toolchain is pinned to AGP 8.13 / Gradle 8.13 on purpose.** AGP 9 breaks Hilt + KSP + Compose. Don't "upgrade" it.
-- **llama-server must be running** for any parse. If it's down the app degrades gracefully (manual-entry fallback). Logs: `adb shell tail -f /sdcard/Download/llama-server.log`. Stop: `adb shell "pkill -f llama-server"`.
-- **HARD REQUIREMENT (`CLAUDE.md` §1): the server runs ON the iQOO, never on a tethered Mac.** It already does — the app hits phone-loopback (`127.0.0.1:8080`), and the server process survives unplugging. Only the *start command* is currently `adb shell` from the Mac; for the demo, start it then unplug, or use a phone-side launcher (Termux). **Phase 6 gate:** airplane mode ON + Mac unplugged → a sale must still parse.
-- **Use `llama-completion`/`llama-server`, never `llama-cli`** (b9620 `llama-cli` hangs over adb). Binaries are thin wrappers — `LD_LIBRARY_PATH=.` is mandatory (handled by the start script).
-- **Validate prompt changes** with `scripts/validate-sale-prompt.py` (needs `adb forward tcp:8080 tcp:8080`). It sends Devanagari over HTTP — `adb input text` can't. Keep its `SYSTEM_PROMPT` in sync with `LlmEngine.SALE_SYSTEM_PROMPT`.
-- **Room is at version 2** with `fallbackToDestructiveMigration` — schema changes wipe dev data.
-- **Driving Compose UI via adb:** uiautomator dumps are single-line and go stale after layout changes (keyboard show/hide); find element bounds by region-grep, re-dump after each layout change.
+- **Toolchain pinned: AGP 8.13 / Gradle 8.13 / JDK 17.** AGP 9 breaks Hilt+KSP+Compose. Don't "upgrade." Vico pinned **2.1.3** (Kotlin-2.0 line; 3.x needs Kotlin 2.3).
+- **llama-server must run ON the iQOO** (`CLAUDE.md` §1) — never a tethered Mac. The start command is `adb shell` from the Mac, but the process is phone-side and survives unplug. Phase 6 gate: airplane-mode + unplug → a sale still parses. Stop: `adb shell "pkill -f llama-server"`. Logs: `/sdcard/Download/llama-server.log`.
+- **Validate prompt changes** with `scripts/validate-sale-prompt.py` (`adb forward tcp:8080 tcp:8080` first; sends Devanagari over HTTP). Keep its `SYSTEM_PROMPT` synced with `LlmEngine.SALE_SYSTEM_PROMPT`.
+- **Room is v2 + `fallbackToDestructiveMigration`** — schema changes wipe dev data.
+- **Driving Compose via adb is flaky.** `ModalBottomSheet` auto-scrolls on keyboard open, so coordinate `input tap`+`input text` land in the wrong field; uiautomator dumps come back empty. Prefer hand-testing UI; let the human drive data entry.
+- **Forcing the periodic WorkManager job via `adb cmd jobscheduler run` is unreliable on OriginOS** (job id rotates, WM logs stripped). For a deterministic low-stock-alert trigger, add a debug-only expedited `OneTimeWorkRequest` of `InventoryAlertWorker` (Phase 6 hardening).
 
 ## Where things live
 
 | Path | What |
 |---|---|
-| `app/src/main/java/com/artha/kirana/data/remote/` | `LlmHttpClient`, `ClaudeApiClient` (Phase 5), DTOs, `NetworkModule` |
+| `…/data/remote/` | `LlmHttpClient`, `ClaudeApiClient` (P5), DTOs, `NetworkModule` |
 | `…/data/llm/` | `LlmEngine` (system prompt), `SaleParser` |
-| `…/data/db/` | Room entities, DAOs, `ArthaDatabase` |
-| `…/domain/` | repositories (interfaces), use-cases, models |
-| `…/ui/` | `ArthaApp` (nav), `home/`, `entry/`, theme |
+| `…/data/db/` | Room entities, DAOs, `ArthaDatabase` (v2) |
+| `…/data/worker/`, `…/data/notification/` | `InventoryAlertWorker`, `NotificationHelper` |
+| `…/domain/` | repository interfaces, use-cases, models (`PnlSummary`, etc.) |
+| `…/ui/` | `ArthaApp` (nav), `home/ entry/ inventory/ khata/ pnl/`, theme |
 | `scripts/` | `start-llama-server.sh`, `validate-sale-prompt.py` |
 | `docs/` | `STATUS.md`, `demo-runbook.md`, `superpowers/specs`, `superpowers/plans` |
 
-## Device reference
+## Device
 
-iQOO 15, serial `10BFBG0CEL001DB`, Android 16, arm64-v8a. ADB on PATH. llama.cpp b9620 at `/data/local/tmp/llama/llama-b9620/`; model at `/sdcard/Download/qwen2.5-3b-instruct-q5_k_m.gguf` (2.4GB). Full on-device-LLM setup notes: `~/Desktop/CrazyStuff/iqoo-mobile/HANDOFF.md`.
+iQOO 15, serial `10BFBG0CEL001DB`, Android 16, arm64-v8a. llama.cpp b9620 at `/data/local/tmp/llama/llama-b9620/`; model at `/sdcard/Download/qwen2.5-3b-instruct-q5_k_m.gguf` (2.4GB). On-device-LLM setup notes: `~/Desktop/CrazyStuff/iqoo-mobile/HANDOFF.md`.
