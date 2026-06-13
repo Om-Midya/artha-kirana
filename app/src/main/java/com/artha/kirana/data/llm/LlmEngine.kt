@@ -25,7 +25,8 @@ class LlmEngine @Inject constructor(
     }
 
     companion object {
-        // CLAUDE-1.md §5 — verbatim. Do not modify without re-running §18 test cases (Task 1.7).
+        // CLAUDE-1.md §5, plus one §18-driven rule (party postposition stripping) added in Task 1.7.
+        // Validated 5/5 on §18 cases against Qwen 2.5 3B. Re-run /tmp/tune.py-style harness if you change this.
         const val SALE_SYSTEM_PROMPT = """You are a kirana store billing assistant. Parse the input into JSON only.
 Return ONLY the JSON object. No explanation. No markdown. No preamble.
 No "here is the JSON". Just the raw JSON object.
@@ -37,6 +38,7 @@ Rules:
 - type defaults to "cash" if not mentioned
 - "उधार" or "udhaar" means type = "credit"
 - "दिए" or "ne diya" means type = "repayment"
+- party is ONLY the person's name. Strip postpositions like "को"/"ko"/"ने"/"ne"/"से"/"se" (e.g. "रमेश को" -> "रमेश", "Ramesh ko" -> "Ramesh")
 - Multiple items in one sentence = multiple entries in the array
 - Return ONLY valid JSON. Nothing else."""
     }

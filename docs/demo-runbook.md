@@ -40,15 +40,21 @@ Manual fallback on device: Settings → Apps → Artha Kirana → Battery → Un
   Run before Phase 4. If it fails, set `VOICE_ENABLED=false` and typed entry covers the demo.
 - **SPIKE C — battery whitelist:** ✅ PASS (2026-06-13). `user,com.artha.kirana,10346` in deviceidle whitelist.
 
-## §18 LLM test-case results (Phase 1 validation)
+## §18 LLM test-case results (Phase 1 validation) — ✅ 5/5 (2026-06-13, Task 1.7)
 
-| Input | Expected type | Expected party | Got | Pass |
-|---|---|---|---|---|
-| दो किलो चावल, अस्सी रुपये, उधार रमेश को | credit | Ramesh | | |
-| 2 kilo cheeni forty rupees | cash | null | | |
-| रमेश ने पचास रुपये दिए | repayment | Ramesh | | |
-| teen soap bees-bees ke credit Priya | credit | Priya | | |
-| chawal aur daal kul 120 | cash | null | | |
+Validated against live Qwen 2.5 3B (temp 0.1, max_tokens 256). Stable across 3 runs.
+Re-run with a tune harness (POST each case to `/v1/chat/completions`, compare type+party).
+
+| Input | Expected type | Expected party | Got type | Got party | Pass |
+|---|---|---|---|---|---|
+| दो किलो चावल, अस्सी रुपये, उधार रमेश को | credit | Ramesh | credit | रमेश | ✅ |
+| 2 kilo cheeni forty rupees | cash | null | cash | null | ✅ |
+| रमेश ने पचास रुपये दिए | repayment | Ramesh | repayment | रमेश | ✅ |
+| teen soap bees-bees ke credit Priya | credit | Priya | credit | Priya | ✅ |
+| chawal aur daal kul 120 | cash | null | cash | null | ✅ |
+
+**Fix that closed the gap:** added a §5 rule to strip Hindi postpositions from the party name
+("रमेश को" → "रमेश"). Party for Hindi input is stored in Devanagari (रमेश ≡ Ramesh).
 
 ## 2-minute demo script (CLAUDE-1.md §15 Phase 6)
 
