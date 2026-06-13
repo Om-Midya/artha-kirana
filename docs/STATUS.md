@@ -8,7 +8,7 @@
 |---|---|
 | **Phase 0 — Foundation** | ✅ Done & device-verified |
 | **Phase 1 — Core sale loop** | ✅ Done & device-verified (incl. Task 1.7 §18 = 5/5) |
-| Phase 2 — Inventory / Khata / P&L | ⬜ Not started |
+| **Phase 2 — Inventory / Khata / P&L** | 🟡 Code complete (13/13 tasks, all unit tests green); device-verified Inventory/Khata/P&L screens + record-payment + worker pipeline. **Pending manual §15 walkthrough:** low-stock notification visual + LLM-sale-driven decrement/COGS. |
 | Phase 3 — Bill scanning | ⬜ Not started |
 | Phase 4 — Voice + vernacular | ⬜ Not started (gated on SPIKE B) |
 | Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
@@ -21,6 +21,13 @@
 - **Full sale loop:** type a Hindi/Hinglish sale → on-device LLM (llama-server, Qwen 2.5 3B over `127.0.0.1:8080`) parses → editable confirmation card → Room save → Home updates reactively. Demonstrated live: `sugar / Cash sale / ₹50` and `chawal / Credit · Ramesh / ₹80`.
 - Revenue (today) aggregates correctly and excludes repayments.
 - **§18 parser cases: 5/5**, stable across 3 runs (see `docs/demo-runbook.md`).
+
+### Phase 2 — verified on the iQOO (2026-06-13)
+- **Inventory:** empty-state + FAB; add/edit/restock bottom sheet renders and saves; low-stock rows highlight (`reorderThreshold > 0 && qtyInStock < reorderThreshold`).
+- **Khata:** total-outstanding card + party list (balance red=owes us); party detail shows balance + transaction history; **Record payment verified end-to-end** — a ₹30 repayment dropped Ramesh ₹80→₹50, history shows the green Repayment row, reactively.
+- **P&L:** Today/Week/Month tabs; metric cards arithmetic verified (Gross profit ₹170 = Revenue ₹170 − COGS ₹0; Outstanding ₹50; Cash ₹90); Vico 2.1.3 column chart renders 7-day revenue (x-axis shows day indices 0–6, not weekday labels — minor polish item).
+- **Low-stock worker:** `InventoryAlertWorker` (`@HiltWorker`) fires and returns SUCCESS via `HiltWorkerFactory` (logcat-confirmed); WorkManager Hilt `Configuration.Provider` wired, default initializer removed, no double-init crash. **The visible notification fire + auto-clear-on-restock has NOT yet been eyeballed — manual step.**
+- All unit tests green (TimeRange, RevenueBucketing, GetPnlSummaryUseCase + Phase 1 suite).
 
 ## Spikes
 
