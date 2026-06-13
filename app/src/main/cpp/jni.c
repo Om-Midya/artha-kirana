@@ -3,6 +3,7 @@
 // fullTranscribe takes a language code (e.g. "hi" for Hindi) — the upstream sample hardcodes "en".
 #include <jni.h>
 #include <android/log.h>
+#include <string.h>
 #include "whisper.h"
 #include "ggml.h"
 
@@ -54,6 +55,8 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     whisper_reset_timings(context);
     if (whisper_full(context, params, audio, n) != 0) {
         LOGW("whisper_full failed");
+    } else {
+        whisper_print_timings(context); // encode/decode breakdown → logcat (tag "whisper")
     }
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio, JNI_ABORT);
     (*env)->ReleaseStringUTFChars(env, lang_str, lang);
@@ -67,12 +70,18 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_getTextSegmentCount(
     return whisper_full_n_segments((struct whisper_context *) context_ptr);
 }
 
-JNIEXPORT jstring JNICALL
+// Returns the raw UTF-8 bytes (NOT NewStringUTF, which requires Modified UTF-8 and ABORTS the
+// process on whisper's standard UTF-8 / stray token-boundary bytes — e.g. Devanagari). Kotlin
+// decodes these as UTF-8, which replaces invalid bytes instead of crashing.
+JNIEXPORT jbyteArray JNICALL
 Java_com_whispercpp_whisper_WhisperLib_00024Companion_getTextSegment(
         JNIEnv *env, jobject thiz, jlong context_ptr, jint index) {
     UNUSED(thiz);
     const char *text = whisper_full_get_segment_text((struct whisper_context *) context_ptr, index);
-    return (*env)->NewStringUTF(env, text);
+    const jsize len = (jsize) strlen(text);
+    jbyteArray arr = (*env)->NewByteArray(env, len);
+    (*env)->SetByteArrayRegion(env, arr, 0, len, (const jbyte *) text);
+    return arr;
 }
 
 JNIEXPORT jstring JNICALL

@@ -3,6 +3,17 @@ project(whisper_android)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# CRITICAL: `installDebug` compiles native code at -O0 by default, which makes ggml ~30x slower
+# (whisper base went 54s vs the ~1-2s it should take). Force -O3 + NDEBUG for ALL build types,
+# and enable the 8 Elite's armv8.2 SIMD (fp16 + dotprod) so ggml uses its fast arm64 kernels.
+set(CMAKE_C_FLAGS_DEBUG     "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG   "-O3 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE   "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+if(ANDROID_ABI STREQUAL "arm64-v8a")
+    add_compile_options(-O3 -march=armv8.2-a+fp16+dotprod)
+endif()
+
 # Build only the ggml + whisper libraries from the vendored tree (no examples/tests/server).
 set(WHISPER_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

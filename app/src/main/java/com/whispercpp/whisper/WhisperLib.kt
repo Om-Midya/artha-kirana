@@ -13,7 +13,9 @@ internal class WhisperLib {
         external fun freeContext(contextPtr: Long)
         external fun fullTranscribe(contextPtr: Long, numThreads: Int, lang: String, audioData: FloatArray)
         external fun getTextSegmentCount(contextPtr: Long): Int
-        external fun getTextSegment(contextPtr: Long, index: Int): String
+
+        /** Raw UTF-8 bytes of a segment — decode in Kotlin (see [WhisperContext]). */
+        external fun getTextSegment(contextPtr: Long, index: Int): ByteArray
         external fun getSystemInfo(): String
     }
 }

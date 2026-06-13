@@ -31,7 +31,9 @@ class WhisperEngine @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
-        const val MODEL_FILE = "ggml-base-q5_1.bin"
+        // Fine-tuned Hindi whisper (vasista22/whisper-hindi-small → ggml q5_1). Far better Hindi
+        // than the generic multilingual models. adb-pushed to the app's external-files dir.
+        const val MODEL_FILE = "ggml-hindi-small-q5_1.bin"
     }
 
     private val modelFile: File
@@ -60,6 +62,19 @@ class WhisperEngine @Inject constructor(
     }
 
     /** Transcribe normalized 16 kHz mono samples to text. Loads the model on first call. */
-    suspend fun transcribe(audio: FloatArray, lang: String = "hi"): String =
-        loadedContext().transcribe(audio, lang)
+    suspend fun transcribe(audio: FloatArray, lang: String = "hi"): String {
+        val preloaded = whisper != null
+        val loadStart = System.currentTimeMillis()
+        val ctx = loadedContext()
+        val loadMs = System.currentTimeMillis() - loadStart
+        val seconds = audio.size / 16000.0
+        val t0 = System.currentTimeMillis()
+        val text = ctx.transcribe(audio, lang)
+        val transMs = System.currentTimeMillis() - t0
+        Timber.i(
+            "Whisper timing: audio=%.1fs, preloaded=%b, loadWait=%dms, transcribe=%dms",
+            seconds, preloaded, loadMs, transMs,
+        )
+        return text
+    }
 }

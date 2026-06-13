@@ -23,8 +23,12 @@ class WhisperContext private constructor(private var ptr: Long) {
             WhisperLib.fullTranscribe(ptr, threads, lang, audio)
             val count = WhisperLib.getTextSegmentCount(ptr)
             buildString {
-                for (i in 0 until count) append(WhisperLib.getTextSegment(ptr, i))
-            }.trim()
+                for (i in 0 until count) {
+                    // Decode raw bytes as UTF-8 (tolerates whisper's stray token-boundary bytes
+                    // instead of crashing in NewStringUTF), then drop any replacement chars.
+                    append(String(WhisperLib.getTextSegment(ptr, i), Charsets.UTF_8))
+                }
+            }.replace("�", "").trim()
         }
 
     suspend fun release() = withContext(scope.coroutineContext) {
