@@ -10,7 +10,7 @@
 | **Phase 1 — Core sale loop** | ✅ Done & device-verified (incl. Task 1.7 §18 = 5/5) |
 | **Phase 2 — Inventory / Khata / P&L** | ✅ Done & merged to `main` (13/13 tasks, final review clean, unit tests green). Device-verified screens + record-payment + worker pipeline. Owner-verifying two §15 visuals (low-stock notification fire/clear; LLM-sale decrement/COGS). |
 | Phase 3 — Bill scanning (OCR) | 🤝 In progress by a collaborator — **not this agent's scope** (do not touch ML Kit/CameraX/BillParser). |
-| **Phase 4 — Voice + vernacular** | 🔵 In progress. **SPIKE B native build PASSES** — whisper.cpp v1.7.4 vendored, compiles for arm64-v8a, `libwhisper_android.so` + ggml/whisper packed in APK. Mic wired into Sale Entry (record → whisper `hi` → input → Parse). **Pending on-device:** push model + speak a Hindi clip to confirm transcription <2s. TTS + vernacular toggle not yet built. |
+| **Phase 4 — Voice + vernacular** | 🟢 Voice pipeline WORKING on-device. whisper.cpp v1.7.4 (arm64, `-O3`) + fine-tuned **whisper-hindi-small q5_1** → accurate Devanagari → `HindiNumbers` normalizer (number-words→digits) → Qwen with `json_schema` grammar → confirm card. ~2-3s. Hallucination on poor audio curbed (single_segment off + RMS silence gate). **Still TODO:** Hindi TTS "Hear summary", recording animation, vernacular toggle, `inputMethod="voice"`, Devanagari party-name vs romanized. |
 | Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
 | Phase 6 — Demo hardening | ⬜ Not started |
 
@@ -33,8 +33,8 @@
 ### Phase 4 voice — SPIKE B status (2026-06-13)
 - **Native build PASSES** (Mac, no device): `./gradlew :app:assembleDebug` compiles vendored whisper.cpp v1.7.4 (`app/src/main/cpp/whisper/`) + `jni.c` → `libwhisper_android.so` (+ libwhisper/libggml*) for arm64-v8a, packaged in the APK. See `app/src/main/cpp/README.md`.
 - **Wired:** `WhisperLib` (JNI) → `WhisperContext` → `WhisperEngine` (lazy singleton, loads `/sdcard/Download/ggml-tiny.bin`) + `AudioRecorder` (16 kHz mono → float). Mic button in Sale Entry: record → transcribe `hi` → drops text into the input → existing Parse path.
-- **NOT yet done — needs the device (owner):** (1) `adb push /tmp/ggml-tiny.bin /sdcard/Download/ggml-tiny.bin` (74 MB multilingual tiny, already downloaded); (2) `./gradlew :app:installDebug`; (3) New Sale → mic → grant RECORD_AUDIO → speak `दो किलो चावल अस्सी रुपये` → stop → confirm recognisable Hindi text appears in <2s. **Pass/fail = SPIKE B gate.** If Hindi accuracy is poor, swap to `ggml-base`.
-- **Remaining Phase 4 after spike passes:** `TextToSpeechManager` (Hindi TTS "Hear summary"), recording animation polish, vernacular language toggle, mark voice entries `inputMethod="voice"`.
+- **SPIKE B PASSED + device-verified.** Final model = **fine-tuned `whisper-hindi-small` → ggml q5_1** at `/sdcard/Android/data/com.artha.kirana/files/` (app external-files dir — scoped storage blocks /sdcard/Download for the app process). Critical perf fix: force `-O3` in CMake (debug installs were `-O0` → ~30x slow). UTF-8 JNI fix (return bytes, decode in Kotlin). Hindi parsing hardened: `HindiNumbers` normalizer + `json_schema` grammar + 500-retry. Hallucination curbed (single_segment off + RMS gate).
+- **Remaining Phase 4:** `TextToSpeechManager` (Hindi TTS "Hear summary"), recording animation, vernacular toggle, mark voice entries `inputMethod="voice"`, decide Devanagari-vs-romanized party names.
 
 ## Spikes
 

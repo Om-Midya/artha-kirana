@@ -16,8 +16,8 @@ adb shell am start -n com.artha.kirana/.MainActivity
 
 - ✅ **Phase 0/1/2 done & merged.** Sale loop (type Hindi → on-device parse → confirm → Room → reactive Home, §18 = 5/5). Inventory (add/edit/restock + low-stock highlight), Khata (party list/detail + record-payment), P&L (today/week/month tabs + Vico chart), low-stock `InventoryAlertWorker`. Final review clean; unit tests green.
 - 🤝 **Phase 3 (OCR/bill scanning) — a collaborator owns this.** Don't touch ML Kit / CameraX / `BillParser` / `BillScanScreen`.
-- 🔵 **Phase 4 (voice) — next.** whisper.cpp via JNI (NOT Android SpeechRecognizer). Gated on SPIKE B (build whisper.cpp for Android + transcribe a Hindi clip offline). NDK 27.1.12297006 + CMake 3.22.1 are installed.
-- ⬜ Phase 5 (Claude market insights, needs API key), Phase 6 (demo hardening).
+- 🟢 **Phase 4 (voice) — working on-device.** whisper.cpp (vendored `app/src/main/cpp/whisper/`, arm64, **`-O3` forced in CMake** — debug installs default to `-O0` = ~30x slower) + **fine-tuned `whisper-hindi-small` ggml q5_1** (accurate Hindi). Model lives in the app external-files dir (`adb push … /sdcard/Android/data/com.artha.kirana/files/ggml-hindi-small-q5_1.bin`; **NOT** /sdcard/Download — scoped storage blocks the app from reading it). Mic in Sale Entry: record → whisper `hi` → `HindiNumbers.normalize` (number-words→digits) → Qwen w/ `json_schema` grammar → confirm. Conversion recipe + model cache: see `docs/STATUS.md` + memory. TODO: Hindi TTS, animation, vernacular toggle.
+- ⬜ Phase 5 (Claude market insights, needs API key), Phase 6 (demo hardening). Possible new direction: conversational/agentic command interface over the existing use-cases (under discussion).
 
 ## Architecture (one paragraph)
 
