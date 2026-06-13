@@ -2,6 +2,8 @@ package com.artha.kirana.ui.entry
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.artha.kirana.data.voice.AudioRecorder
+import com.artha.kirana.data.voice.WhisperEngine
 import com.artha.kirana.domain.model.SaleEntry
 import com.artha.kirana.domain.usecase.LogSaleUseCase
 import com.artha.kirana.domain.usecase.ParseSaleEntryUseCase
@@ -11,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 sealed interface SaleEntryUiState {
@@ -24,10 +28,20 @@ sealed interface SaleEntryEvent {
     data class Saved(val count: Int) : SaleEntryEvent
 }
 
+/** Voice-entry status, surfaced next to the mic button. */
+sealed interface VoiceState {
+    data object Idle : VoiceState
+    data object Recording : VoiceState
+    data object Transcribing : VoiceState
+    data class Error(val message: String) : VoiceState
+}
+
 @HiltViewModel
 class SaleEntryViewModel @Inject constructor(
     private val parseSale: ParseSaleEntryUseCase,
     private val logSale: LogSaleUseCase,
+    private val audioRecorder: AudioRecorder,
+    private val whisper: WhisperEngine,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<SaleEntryUiState>(SaleEntryUiState.Idle)
@@ -35,6 +49,51 @@ class SaleEntryViewModel @Inject constructor(
 
     private val _events = MutableSharedFlow<SaleEntryEvent>(extraBufferCapacity = 1)
     val events = _events.asSharedFlow()
+
+    private val _voice = MutableStateFlow<VoiceState>(VoiceState.Idle)
+    val voice = _voice.asStateFlow()
+
+    /** Emitted when a recording is transcribed — the screen drops this into the input field. */
+    private val _transcript = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val transcript = _transcript.asSharedFlow()
+
+    val voiceEnabled: Boolean get() = whisper.voiceEnabled
+
+    private val recording = AtomicBoolean(false)
+
+    /** Tap to start recording; tap again to stop → transcribe. */
+    fun toggleVoice() {
+        when (_voice.value) {
+            VoiceState.Recording -> recording.set(false) // stop → record() returns, then we transcribe
+            VoiceState.Transcribing -> Unit
+            else -> startRecording()
+        }
+    }
+
+    private fun startRecording() {
+        if (!whisper.isModelPresent()) {
+            _voice.value = VoiceState.Error("Voice model missing — push ggml-tiny.bin to the phone.")
+            return
+        }
+        recording.set(true)
+        _voice.value = VoiceState.Recording
+        viewModelScope.launch {
+            try {
+                val samples = audioRecorder.record(maxSeconds = 12) { recording.get() }
+                if (samples.isEmpty()) {
+                    _voice.value = VoiceState.Idle
+                    return@launch
+                }
+                _voice.value = VoiceState.Transcribing
+                val text = whisper.transcribe(samples, lang = "hi")
+                _transcript.emit(text)
+                _voice.value = VoiceState.Idle
+            } catch (t: Throwable) {
+                Timber.e(t, "voice transcription failed")
+                _voice.value = VoiceState.Error(t.message ?: "Voice failed")
+            }
+        }
+    }
 
     private var lastRawText: String = ""
 

@@ -40,19 +40,32 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.Manifest
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.LaunchedEffect
 import com.artha.kirana.domain.model.SaleEntry
 import com.artha.kirana.ui.theme.AccentGreen
+import com.artha.kirana.ui.theme.AccentRed
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun SaleEntryScreen(
     onDone: () -> Unit,
     vm: SaleEntryViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val voice by vm.voice.collectAsStateWithLifecycle()
+    val micPermission = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
 
     // Saved -> pop back to Home (which updates live via Flow).
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         vm.events.collect { onDone() }
     }
 
@@ -77,6 +90,11 @@ fun SaleEntryScreen(
         ) {
             var input by rememberSaveable { mutableStateOf("") }
 
+            // Transcribed speech drops into the input field, then flows through the same Parse path.
+            LaunchedEffect(Unit) {
+                vm.transcript.collect { text -> if (text.isNotBlank()) input = text }
+            }
+
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },
@@ -86,11 +104,34 @@ fun SaleEntryScreen(
                 minLines = 2,
             )
             Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = { vm.parse(input) },
-                enabled = state !is SaleEntryUiState.Parsing && input.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Parse") }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (vm.voiceEnabled) {
+                    val isRecording = voice is VoiceState.Recording
+                    FilledIconButton(
+                        onClick = {
+                            if (micPermission.status.isGranted) vm.toggleVoice() else micPermission.launchPermissionRequest()
+                        },
+                        enabled = voice !is VoiceState.Transcribing,
+                        colors = if (isRecording) {
+                            IconButtonDefaults.filledIconButtonColors(containerColor = AccentRed)
+                        } else {
+                            IconButtonDefaults.filledIconButtonColors()
+                        },
+                    ) {
+                        Icon(
+                            if (isRecording) Icons.Filled.Stop else Icons.Filled.Mic,
+                            contentDescription = if (isRecording) "Stop recording" else "Record voice",
+                        )
+                    }
+                }
+                Button(
+                    onClick = { vm.parse(input) },
+                    enabled = state !is SaleEntryUiState.Parsing && input.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                ) { Text("Parse") }
+            }
+
+            VoiceStatus(voice)
 
             Spacer(Modifier.height(20.dp))
 
@@ -117,6 +158,28 @@ fun SaleEntryScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun VoiceStatus(voice: VoiceState) {
+    val text = when (voice) {
+        VoiceState.Recording -> "🎙️ सुन रहा हूँ… (रोकने के लिए फिर दबाएँ)"
+        VoiceState.Transcribing -> "लिख रहा हूँ…"
+        is VoiceState.Error -> voice.message
+        VoiceState.Idle -> null
+    }
+    if (text != null) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (voice is VoiceState.Error) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
     }
 }
 
