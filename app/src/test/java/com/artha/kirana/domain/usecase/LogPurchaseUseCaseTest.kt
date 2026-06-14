@@ -55,4 +55,23 @@ class LogPurchaseUseCaseTest {
 
         coVerify { purchases.add(match<PurchaseEntity> { it.cost == 60.0 }) }
     }
+
+    @Test
+    fun `new item gets sell price when provided`() = runTest {
+        coEvery { inventory.findByName("Maggi") } returns null
+        coEvery { inventory.addItem(any()) } returns 9L
+        subject(listOf(ParsedPurchaseItem("Maggi", qty = 6.0, unit = "pcs", unitPrice = 10.0, amount = 60.0, sellPrice = 15.0)), supplier = null)
+        coVerify { inventory.addItem(match<ItemEntity> { it.name == "Maggi" && it.costPrice == 10.0 && it.sellPrice == 15.0 }) }
+    }
+
+    @Test
+    fun `existing item sell price is updated when provided`() = runTest {
+        val existing = ItemEntity(id = 3, name = "Rice", unit = "kg", costPrice = 30.0, sellPrice = 40.0)
+        coEvery { inventory.findByName("Rice") } returns existing
+        val updated = slot<ItemEntity>()
+        coEvery { inventory.updateItem(capture(updated)) } just Runs
+        subject(listOf(ParsedPurchaseItem("Rice", qty = 2.0, unit = "kg", unitPrice = 32.0, amount = 64.0, sellPrice = 50.0)), supplier = null)
+        assertEquals(32.0, updated.captured.costPrice, 0.0)
+        assertEquals(50.0, updated.captured.sellPrice, 0.0)
+    }
 }

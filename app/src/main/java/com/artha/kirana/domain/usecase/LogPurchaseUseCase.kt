@@ -26,8 +26,10 @@ class LogPurchaseUseCase @Inject constructor(
                 if (name.isEmpty() || line.qty <= 0.0) continue
                 val existing = inventory.findByName(name)
                 val itemId: Long = if (existing != null) {
-                    if (line.unitPrice != null && line.unitPrice > 0.0) {
-                        inventory.updateItem(existing.copy(costPrice = line.unitPrice))
+                    val newCost = if (line.unitPrice != null && line.unitPrice > 0.0) line.unitPrice else existing.costPrice
+                    val newSell = if (line.sellPrice != null && line.sellPrice > 0.0) line.sellPrice else existing.sellPrice
+                    if (newCost != existing.costPrice || newSell != existing.sellPrice) {
+                        inventory.updateItem(existing.copy(costPrice = newCost, sellPrice = newSell))
                     }
                     existing.id
                 } else {
@@ -36,6 +38,7 @@ class LogPurchaseUseCase @Inject constructor(
                             name = name,
                             unit = line.unit,
                             costPrice = line.unitPrice ?: 0.0,
+                            sellPrice = line.sellPrice ?: 0.0,
                         ),
                     )
                 }
