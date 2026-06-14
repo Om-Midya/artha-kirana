@@ -4,6 +4,7 @@ import com.artha.kirana.data.llm.IntentRouter
 import com.artha.kirana.data.llm.LlmEngine
 import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.domain.model.AssistantResult
+import com.artha.kirana.domain.repository.CustomerRepository
 import com.artha.kirana.util.HindiNumbers
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
@@ -18,6 +19,10 @@ class RouteAssistantUseCase @Inject constructor(
     private val parseSale: ParseSaleEntryUseCase,
     private val engine: LlmEngine,
     private val getPnl: GetPnlSummaryUseCase,
+    private val getTopSellers: GetTopSellersUseCase,
+    private val getCustomerSummary: GetCustomerSummaryUseCase,
+    private val getDayTrend: GetDayOfWeekTrendUseCase,
+    private val customers: CustomerRepository,
 ) {
     suspend operator fun invoke(text: String): AssistantResult {
         val intent = intentRouter.classify(text).getOrElse { return AssistantResult.Unavailable }
@@ -41,8 +46,27 @@ class RouteAssistantUseCase @Inject constructor(
             AssistantIntent.QUERY_PNL ->
                 AssistantResult.PnlAnswer(getPnl(PnlPeriodDetector.detect(text)).first())
 
-            // QUERY_TOP_SELLERS / QUERY_CUSTOMER / QUERY_DAY_TREND are routed in a later task.
-            else -> AssistantResult.Reply(COULD_NOT_UNDERSTAND)
+            AssistantIntent.QUERY_TOP_SELLERS -> {
+                val period = PnlPeriodDetector.detect(text)
+                AssistantResult.TopSellersAnswer(period, getTopSellers(period.startFrom(System.currentTimeMillis()), Long.MAX_VALUE))
+            }
+
+            AssistantIntent.QUERY_DAY_TREND -> {
+                val period = PnlPeriodDetector.detect(text)
+                AssistantResult.DayTrendAnswer(period, getDayTrend(period.startFrom(System.currentTimeMillis()), Long.MAX_VALUE))
+            }
+
+            AssistantIntent.QUERY_CUSTOMER -> engine.extractCustomerName(text).fold(
+                onSuccess = { name ->
+                    if (name.isNullOrBlank()) AssistantResult.Reply(ASK_WHICH_CUSTOMER)
+                    else customers.findByName(name)?.let { c ->
+                        AssistantResult.CustomerAnswer(c.name, getCustomerSummary(c.id))
+                    } ?: AssistantResult.Reply(customerNotFound(name))
+                },
+                onFailure = { AssistantResult.Unavailable },
+            )
+
+            AssistantIntent.UNKNOWN -> AssistantResult.Reply(COULD_NOT_UNDERSTAND)
         }
     }
 
@@ -51,5 +75,7 @@ class RouteAssistantUseCase @Inject constructor(
 
     companion object {
         const val COULD_NOT_UNDERSTAND = "समझ नहीं आया — दोबारा कहें (जैसे: 'दो किलो चावल अस्सी का')।"
+        const val ASK_WHICH_CUSTOMER = "किस ग्राहक का हिसाब? नाम बताएँ।"
+        fun customerNotFound(name: String) = "ग्राहक '$name' नहीं मिला।"
     }
 }

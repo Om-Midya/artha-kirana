@@ -11,6 +11,15 @@ sealed interface AssistantResult {
     /** A read-only P&L answer (no confirmation needed). */
     data class PnlAnswer(val summary: PnlSummary) : AssistantResult
 
+    /** Read-only top-sellers ranking for a period. */
+    data class TopSellersAnswer(val period: PnlPeriod, val rows: List<TopSellerRow>) : AssistantResult
+
+    /** Read-only one-customer summary. */
+    data class CustomerAnswer(val name: String, val summary: CustomerSummary) : AssistantResult
+
+    /** Read-only revenue-by-weekday (index 0 = Sunday). */
+    data class DayTrendAnswer(val period: PnlPeriod, val buckets: DoubleArray) : AssistantResult
+
     /** A plain text reply (acks, "didn't understand", greetings). */
     data class Reply(val text: String) : AssistantResult
 

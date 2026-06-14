@@ -1,14 +1,18 @@
 package com.artha.kirana.domain.usecase
 
+import com.artha.kirana.data.db.entity.CustomerEntity
 import com.artha.kirana.data.llm.IntentRouter
 import com.artha.kirana.data.llm.LlmEngine
 import com.artha.kirana.data.llm.ParsedPayment
 import com.artha.kirana.data.remote.LlmUnavailableException
 import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.domain.model.AssistantResult
+import com.artha.kirana.domain.model.CustomerSummary
 import com.artha.kirana.domain.model.PnlPeriod
 import com.artha.kirana.domain.model.PnlSummary
 import com.artha.kirana.domain.model.SaleEntry
+import com.artha.kirana.domain.model.TopSellerRow
+import com.artha.kirana.domain.repository.CustomerRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -24,7 +28,14 @@ class RouteAssistantUseCaseTest {
     private val parseSale = mockk<ParseSaleEntryUseCase>()
     private val engine = mockk<LlmEngine>()
     private val getPnl = mockk<GetPnlSummaryUseCase>()
-    private val useCase = RouteAssistantUseCase(intentRouter, parseSale, engine, getPnl)
+    private val getTopSellers = mockk<GetTopSellersUseCase>(relaxed = true)
+    private val getCustomerSummary = mockk<GetCustomerSummaryUseCase>(relaxed = true)
+    private val getDayTrend = mockk<GetDayOfWeekTrendUseCase>(relaxed = true)
+    private val customers = mockk<CustomerRepository>(relaxed = true)
+    private val useCase = RouteAssistantUseCase(
+        intentRouter, parseSale, engine, getPnl,
+        getTopSellers, getCustomerSummary, getDayTrend, customers,
+    )
 
     private val summary = PnlSummary(0.0, 0.0, 0.0, 0.0, 0.0, PnlPeriod.TODAY)
 
@@ -84,5 +95,65 @@ class RouteAssistantUseCaseTest {
         coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.UNKNOWN)
 
         assertTrue(useCase("नमस्ते") is AssistantResult.Reply)
+    }
+
+    @Test
+    fun topSellersIntentReturnsRankingForDetectedPeriod() = runTest {
+        coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_TOP_SELLERS)
+        val rows = listOf(TopSellerRow(1L, "चावल", 9.0, 450.0))
+        coEvery { getTopSellers(any(), any()) } returns rows
+
+        val result = useCase("इस हफ्ते सबसे ज्यादा क्या बिका")
+
+        assertTrue(result is AssistantResult.TopSellersAnswer)
+        result as AssistantResult.TopSellersAnswer
+        assertEquals(PnlPeriod.THIS_WEEK, result.period)
+        assertEquals(rows, result.rows)
+    }
+
+    @Test
+    fun customerIntentResolvesNameToSummary() = runTest {
+        coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_CUSTOMER)
+        coEvery { engine.extractCustomerName(any()) } returns Result.success("Ramesh")
+        coEvery { customers.findByName("Ramesh") } returns CustomerEntity(id = 3, name = "Ramesh")
+        coEvery { getCustomerSummary(3L) } returns CustomerSummary(3L, 500.0, 120.0)
+
+        val result = useCase("रमेश का हिसाब")
+
+        assertTrue(result is AssistantResult.CustomerAnswer)
+        result as AssistantResult.CustomerAnswer
+        assertEquals("Ramesh", result.name)
+        assertEquals(120.0, result.summary.outstanding, 0.001)
+    }
+
+    @Test
+    fun customerIntentNotFoundReplies() = runTest {
+        coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_CUSTOMER)
+        coEvery { engine.extractCustomerName(any()) } returns Result.success("Mystery")
+        coEvery { customers.findByName("Mystery") } returns null
+
+        val result = useCase("मिस्ट्री का हिसाब")
+
+        assertTrue(result is AssistantResult.Reply)
+    }
+
+    @Test
+    fun customerIntentNullNameAsksWhich() = runTest {
+        coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_CUSTOMER)
+        coEvery { engine.extractCustomerName(any()) } returns Result.success(null)
+
+        val result = useCase("हिसाब बताओ")
+
+        assertTrue(result is AssistantResult.Reply)
+    }
+
+    @Test
+    fun dayTrendIntentReturnsBuckets() = runTest {
+        coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_DAY_TREND)
+        coEvery { getDayTrend(any(), any()) } returns DoubleArray(7) { it.toDouble() }
+
+        val result = useCase("कौन सा दिन busy")
+
+        assertTrue(result is AssistantResult.DayTrendAnswer)
     }
 }
