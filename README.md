@@ -3,6 +3,7 @@
 **Turning the kirana counter into a financial identity for the next 500 million.**
 
 > An AI commerce-and-finance OS for India's corner shops, where the phone is the only tool.
+> **Local-first:** it runs on the iQOO's on-device edge — the cloud is touched *only* to OCR a photo.
 > Built for **PS 3 — Reimagine Money for Bharat** (iQOO Hackathon).
 
 Artha hits three angles this problem statement names — **phone-as-POS, credit-scoring for the unbanked, and a vernacular assistant** — fused into one loop.
@@ -62,14 +63,15 @@ The ledger is **free** — it's acquisition and data, never the revenue. The sto
 
 ## Architecture
 
-Phone-first, on a physical iQOO 15.
+**Local-first — runs on the iQOO 15's on-device edge (Snapdragon 8 Elite).** The shopkeeper's data lives on the phone; nothing leaves it but an image for OCR.
 
-- **Multi-provider, cloud-first LLM** via OpenRouter — Claude **Haiku 4.5** for agents/parsing, **Opus 4.8** for vision — with an **on-device llama.cpp (Qwen 3B) fallback** so the loop never stops when signal drops.
+- **On-device LLM** — Qwen 2.5 3B via **llama.cpp** runs entry parsing, intent routing, and the insight loop on the phone, offline.
+- **Cloud only for OCR** — Claude **Opus 4.8** vision reads handwriting (the one task that genuinely needs a frontier vision model), via OpenRouter. That is the *sole* cloud touchpoint.
 - **On-device Hindi STT** — fine-tuned `whisper-hindi-small` (whisper.cpp, vendored, arm64).
-- **Local data** — Room/SQLite v3 with customers, price snapshots, and reactive flows.
-- **Tool-calling agent** — read-only shop-data tools (P&L, top-sellers, per-customer, day-trend, margins, low-stock, who-owes, inventory) + draft-action tools that surface confirm cards.
+- **Local data** — Room/SQLite v3 with customers, price snapshots, and reactive flows — the credit-grade record, on-device.
+- **Tool-calling agent** — read-only shop-data tools (P&L, top-sellers, per-customer, day-trend, margins, low-stock, who-owes, inventory) + draft-action tools that surface confirm cards; answers in Hindi/Hinglish with inline charts.
 - **UI** — Kotlin + Jetpack Compose, Clean Architecture (`data` / `domain` / `ui`), Hilt, "The Verge"–inspired design system (canvas-black + mint/ultraviolet, Anton / Hanken Grotesk / Space Mono).
-- Phone is the only interface; **OfficeKit bridges the agentic build.**
+- Phone is the only interface; **OfficeKit bridges the build.**
 
 ## Tech stack
 
@@ -79,12 +81,11 @@ Kotlin · Jetpack Compose · Material 3 · Hilt · Room · Ktor + kotlinx.serial
 
 ```bash
 adb devices                      # iQOO 15 = 10BFBG0CEL001DB
-# Cloud is primary — put your OpenRouter key in keys.properties (gitignored) at repo root:
+# On-device LLM runs the core loop — start it on the phone:
+./scripts/start-llama-server.sh  # Qwen 2.5 3B on the iQOO (127.0.0.1:8080)
+# Cloud is used ONLY for OCR (vision). Put your OpenRouter key in keys.properties (gitignored) at repo root:
 #   OPENROUTER_KEY=sk-or-...
-#   OPENROUTER_MODEL=anthropic/claude-haiku-4.5
 #   OPENROUTER_VISION_MODEL=anthropic/claude-opus-4.8
-# (Optional offline fallback) start the on-device model:
-./scripts/start-llama-server.sh  # Qwen 2.5 3B on the phone (127.0.0.1:8080)
 ./gradlew :app:installDebug      # JDK 17, AGP 8.13 (pinned)
 adb shell am start -n com.artha.kirana/.MainActivity
 ```

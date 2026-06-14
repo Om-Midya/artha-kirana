@@ -77,9 +77,10 @@ text(s, 0.9, 2.8, 11.5, 1.0,
      [[("Turning the kirana counter into a ", 26, WHITE, BODY, False),
        ("financial identity", 26, MINT, BODY, True),
        (" for the next 500 million.", 26, WHITE, BODY, False)]])
-text(s, 0.9, 4.2, 11.5, 1.2,
+text(s, 0.9, 4.2, 11.7, 1.4,
      [[("An AI commerce-and-finance OS for India's 13 million corner shops — ", 17, MUTED, BODY, False),
-       ("the phone is the only tool.", 17, MUTED, BODY, True)]])
+       ("the phone is the only tool.", 17, MUTED, BODY, True)],
+      [("Local-first — runs on the iQOO's on-device edge; the cloud is touched only to OCR a photo.", 17, MINT, BODY, True)]])
 text(s, 0.9, 6.55, 12, 0.6,
      [[("PS 3 · REIMAGINE MONEY FOR BHARAT", 13, MINT, MONO, True),
        ("      iQOO Hackathon", 13, MUTED, MONO, False)]])
@@ -150,21 +151,22 @@ shots_slide("The product (2/2)", [
 
 # ── 6. Architecture ─────────────────────────────────────────────────────────
 s = slide()
-kicker(s, 0.9, 0.7, "Architecture · phone-first", MINT)
-rule(s, 0.9, 1.2, 4.0, UV)
-text(s, 0.9, 1.5, 11.5, 0.9,
-     [[("Cloud AI when there's signal, on-device when there isn't — it never stops.", 22, WHITE, DISPLAY, True)]])
+kicker(s, 0.9, 0.65, "Architecture · local-first, on-device edge", MINT)
+rule(s, 0.9, 1.13, 5.0, UV)
+text(s, 0.9, 1.38, 11.7, 0.9,
+     [[("Runs on the iQOO's edge — nothing leaves the phone but an image for OCR.", 22, WHITE, DISPLAY, True)]])
 arch = [
-    ("LLM", "Cloud-first via OpenRouter — Claude Haiku 4.5 (agents/parsing) + Opus 4.8 (vision) — with an on-device llama.cpp (Qwen 3B) fallback."),
-    ("Voice", "On-device Hindi STT — fine-tuned whisper-hindi-small (whisper.cpp, JNI, arm64)."),
-    ("Agent", "Tool-calling over 8 read-only shop-data tools (P&L, top-sellers, customer, day-trend, margins, low-stock, who-owes, inventory) + draft-action tools → confirm cards."),
-    ("Data", "Local Room/SQLite v3 — customers, price snapshots, reactive flows. Nothing critical leaves the phone."),
-    ("App", "Kotlin · Jetpack Compose · Clean Arch · Hilt · 'The Verge' design system. OfficeKit bridges the build."),
+    ("ON-DEVICE LLM", "Qwen 2.5 3B via llama.cpp parses entries, routes intents, and runs the insight loop on the iQOO — offline."),
+    ("CLOUD = OCR ONLY", "Claude Opus 4.8 vision reads Hindi handwriting — the one task that genuinely needs a frontier model. The sole cloud touchpoint."),
+    ("VOICE", "On-device Hindi STT — fine-tuned whisper-hindi-small (whisper.cpp, JNI, arm64)."),
+    ("DATA", "Local Room/SQLite v3 — customers, price snapshots, reactive flows. The credit-grade record stays on the phone."),
+    ("AGENT", "Tool-calling over 8 read-only shop-data tools + draft-action tools → confirm cards; answers with inline charts."),
+    ("APP", "Kotlin · Jetpack Compose · Clean Arch · Hilt · 'The Verge' design system. OfficeKit bridges the build."),
 ]
 for i, (head, body) in enumerate(arch):
-    y = 2.6 + i * 0.92
-    text(s, 0.9, y, 2.0, 0.85, [[(head, 17, MINT, MONO, True)]], anchor=MSO_ANCHOR.MIDDLE)
-    text(s, 3.0, y, 9.5, 0.85, [[(body, 14.5, WHITE, BODY, False)]], anchor=MSO_ANCHOR.MIDDLE)
+    y = 2.45 + i * 0.8
+    text(s, 0.9, y, 2.7, 0.75, [[(head, 13.5, MINT, MONO, True)]], anchor=MSO_ANCHOR.MIDDLE)
+    text(s, 3.7, y, 8.9, 0.75, [[(body, 13.5, WHITE, BODY, False)]], anchor=MSO_ANCHOR.MIDDLE)
 
 # ── 7. Why it holds / close ─────────────────────────────────────────────────
 s = slide()
