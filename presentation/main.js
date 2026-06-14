@@ -39,7 +39,7 @@
       }
     });
   }, { rootMargin: "-45% 0px -50% 0px" });
-  ["problem", "loop", "product", "edge", "credit"].forEach((id) => {
+  ["problem", "loop", "product", "edge"].forEach((id) => {
     const s = document.getElementById(id); if (s) secObs.observe(s);
   });
 
@@ -87,25 +87,6 @@
   if (loopSec) new IntersectionObserver((es) => {
     es.forEach((e) => (e.isIntersecting ? startAuto() : clearInterval(auto)));
   }, { threshold: 0.25 }).observe(loopSec);
-
-  /* Artha Score dial */
-  const SCORE = 78, C = 578;
-  const dial = $("#dial"), dialVal = $("#dialValue"), dialNum = $("#dialNum");
-  if (dial) {
-    new IntersectionObserver((es, ob) => {
-      es.forEach((e) => {
-        if (!e.isIntersecting) return; ob.disconnect();
-        dialVal.style.strokeDashoffset = (C * (1 - SCORE / 100)).toFixed(1);
-        const t0 = performance.now(), dur = 1800;
-        const tick = (t) => {
-          const k = Math.min(1, (t - t0) / dur);
-          dialNum.textContent = Math.round(SCORE * (1 - Math.pow(1 - k, 3)));
-          if (k < 1) requestAnimationFrame(tick);
-        };
-        reduce ? (dialNum.textContent = SCORE) : requestAnimationFrame(tick);
-      });
-    }, { threshold: 0.4 }).observe(dial);
-  }
 
   /* hero phone 3D tilt */
   const stage = $(".hero__device"), tiltEl = $("[data-tilt]");
