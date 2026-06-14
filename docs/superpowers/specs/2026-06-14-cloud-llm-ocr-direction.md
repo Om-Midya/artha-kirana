@@ -71,16 +71,19 @@ Selectively adopt `asRupees()` (Indian grouping), the online/on-device badge (su
 
 **Recommended order:** A → B → (C if time).
 
-## 5. Open questions (resolve in brainstorming BEFORE designing)
+## 5. Open questions
 
-1. **Provider:** OpenRouter + `anthropic/claude-haiku-4.5` (colleague's proven path; one key for text+vision) vs direct Anthropic API (`api.anthropic.com`, our CLAUDE.md §12 referenced `claude-sonnet-4-6`)? Recommend **OpenRouter+Haiku** to match the colleague and keep one key for text+vision. (Confirm with user; they have the colleague's setup.)
-2. **API key:** user must supply an **OpenRouter key** (BLOCKER). Store in gitignored `keys.properties` → BuildConfig (hackathon) — confirm.
+**RESOLVED (user, 2026-06-14):**
+1. ✅ **Provider = OpenRouter + `anthropic/claude-haiku-4.5`** (one key for text + vision).
+2. ✅ **API key supplied** — stored in gitignored `keys.properties` (`OPENROUTER_KEY` + `OPENROUTER_MODEL` + `OPENROUTER_VISION_MODEL`, both models = Haiku 4.5). Task A wires `build.gradle.kts` to read it into BuildConfig. Never commit/echo the value.
+8. ✅ **Branch = stay on `feat/analytics-chat`** (don't merge to main first).
+
+**STILL OPEN (brainstorm before designing):**
 3. **Fallback trigger + cloud timeout:** fall back to local on cloud exception/timeout/blank-key. What cloud timeout before falling back? Colleague uses 60s read; for snappy fallback consider ~8–12s so a slow/no-network cloud drops to local fast. Also a "force local" debug toggle?
 4. **`response_format`:** confirm json_object + our `JsonParser` is enough (no json_schema on cloud). (Recommend yes — parsers already tolerant.)
 5. **OCR scope:** cloud bill scan only (no ML Kit, no handwritten-khata-on-device for now)? Capture via CameraX (our deps) or port the colleague's system-camera+FileProvider hardening? Coordinate with the Phase 3 collaborator?
 6. **Schema:** keep OUR `SaleEntry`/`SALE_SYSTEM_PROMPT` (just routed to the cloud), or adopt the colleague's richer `ParsedTransaction` (adds EXPENSE type, paymentType UPI/CASH)? Recommend keep ours for now (minimal churn; our DB + use-cases already speak `SaleEntry`).
 7. **UI adoption:** how much of the colleague's theme to pull in (just `asRupees()`+badges, or the full glass theme)?
-8. **Branch base:** build on `feat/analytics-chat` (current, 13 commits, unmerged) or merge that to `main` first? (The analytics-chat + data-layer v3 work is orthogonal and should be kept.)
 
 ## 6. Constraints / gotchas
 

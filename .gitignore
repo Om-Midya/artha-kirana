@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+# secrets — OpenRouter / cloud LLM keys (NEVER commit)
+keys.properties
+/keys.properties
