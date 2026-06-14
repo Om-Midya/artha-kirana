@@ -6,7 +6,9 @@ import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.domain.model.AssistantResult
 import com.artha.kirana.domain.repository.CustomerRepository
 import com.artha.kirana.util.HindiNumbers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -80,8 +82,15 @@ class RouteAssistantUseCase @Inject constructor(
         return period to period.startFrom(System.currentTimeMillis())
     }
 
-    /** Preload the on-device LLM (intent prefix cache) so the first message is fast. Safe if offline. */
-    suspend fun warmUp() = intentRouter.warmUp()
+    /**
+     * Preload the on-device LLM so the first message is fast. Warms BOTH the intent prefix and
+     * the large SALE prompt concurrently — the sale prompt's ~30s cold prefill is what otherwise
+     * makes the first `log_sale` time out into a false "server offline". Safe if offline.
+     */
+    suspend fun warmUp() = coroutineScope {
+        launch { intentRouter.warmUp() }
+        launch { engine.warmUpSale() }
+    }
 
     companion object {
         const val COULD_NOT_UNDERSTAND = "समझ नहीं आया — दोबारा कहें (जैसे: 'दो किलो चावल अस्सी का')।"

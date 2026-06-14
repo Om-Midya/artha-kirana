@@ -52,6 +52,16 @@ class LlmEngine @Inject constructor(
         Result.failure(e)
     }
 
+    /**
+     * Primes the server with the (large ~940-token) SALE system prompt so the first real
+     * `parseSale` reuses the cached prefix instead of a ~30s cold prefill (which otherwise
+     * exceeds the request timeout and surfaces as a false "server offline"). Fire-and-forget;
+     * swallows errors (server may be offline). Result intentionally discarded.
+     */
+    suspend fun warmUpSale() {
+        runCatching { client.chat(SALE_SYSTEM_PROMPT, "x", SALE_RESPONSE_FORMAT) }
+    }
+
     /** Pure: raw LLM content → customer name (trimmed) or null. Never throws. */
     fun parseCustomerName(raw: String): String? {
         val jsonStr = JsonParser.extractJson(raw) ?: return null
