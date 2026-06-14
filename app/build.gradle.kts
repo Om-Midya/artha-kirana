@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,6 +10,11 @@ plugins {
 }
 
 android {
+    val keysFile = rootProject.file("keys.properties")
+    val keys = Properties().apply {
+        if (keysFile.exists()) keysFile.inputStream().use { load(it) }
+    }
+
     namespace = "com.artha.kirana"
     compileSdk = 36
     ndkVersion = "27.1.12297006"
@@ -22,6 +29,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "LLM_BASE_URL", "\"http://127.0.0.1:8080\"")
         buildConfigField("boolean", "VOICE_ENABLED", "true")
+        buildConfigField("String", "OPENROUTER_KEY", "\"${keys.getProperty("OPENROUTER_KEY", "")}\"")
+        buildConfigField("String", "OPENROUTER_MODEL", "\"${keys.getProperty("OPENROUTER_MODEL", "anthropic/claude-haiku-4.5")}\"")
+        buildConfigField("String", "OPENROUTER_VISION_MODEL", "\"${keys.getProperty("OPENROUTER_VISION_MODEL", "anthropic/claude-haiku-4.5")}\"")
+        buildConfigField("boolean", "FORCE_LOCAL_LLM", "false")
 
         // whisper.cpp native ASR — the iQOO is arm64-v8a only (keeps the native build fast).
         ndk {
