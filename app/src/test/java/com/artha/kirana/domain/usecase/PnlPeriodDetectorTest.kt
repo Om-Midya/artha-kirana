@@ -24,4 +24,13 @@ class PnlPeriodDetectorTest {
         assertEquals(PnlPeriod.THIS_MONTH, PnlPeriodDetector.detect("इस महीने की कमाई"))
         assertEquals(PnlPeriod.THIS_MONTH, PnlPeriodDetector.detect("this month sales"))
     }
+
+    @Test
+    fun reportDefaultsToMonthButHonorsExplicitTodayAndWeek() {
+        // bare "what sold most" → month (not today, which is often empty)
+        assertEquals(PnlPeriod.THIS_MONTH, PnlPeriodDetector.detectForReport("सबसे ज्यादा क्या बिका"))
+        assertEquals(PnlPeriod.THIS_MONTH, PnlPeriodDetector.detectForReport("इस महीने के टॉप आइटम"))
+        assertEquals(PnlPeriod.TODAY, PnlPeriodDetector.detectForReport("आज सबसे ज्यादा क्या बिका"))
+        assertEquals(PnlPeriod.THIS_WEEK, PnlPeriodDetector.detectForReport("इस हफ्ते के टॉप आइटम"))
+    }
 }

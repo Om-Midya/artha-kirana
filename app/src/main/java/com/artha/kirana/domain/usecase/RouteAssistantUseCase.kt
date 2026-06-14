@@ -70,9 +70,13 @@ class RouteAssistantUseCase @Inject constructor(
         }
     }
 
-    /** Detected period + its window-start timestamp (end is always Long.MAX_VALUE). */
+    /**
+     * Detected period + its window-start timestamp (end is always Long.MAX_VALUE). Uses
+     * [PnlPeriodDetector.detectForReport] so a bare ranking question (no time word) defaults to
+     * THIS_MONTH rather than TODAY — "what sold most" / "busiest day" means recent/overall.
+     */
     private fun periodWindow(text: String): Pair<com.artha.kirana.domain.model.PnlPeriod, Long> {
-        val period = PnlPeriodDetector.detect(text)
+        val period = PnlPeriodDetector.detectForReport(text)
         return period to period.startFrom(System.currentTimeMillis())
     }
 

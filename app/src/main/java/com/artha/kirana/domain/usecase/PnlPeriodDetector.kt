@@ -18,4 +18,20 @@ object PnlPeriodDetector {
             else -> PnlPeriod.TODAY
         }
     }
+
+    /**
+     * Period for ranking/report questions (top sellers, day-of-week trends). Unlike [detect],
+     * a query with NO time word defaults to THIS_MONTH — "what sold the most" / "busiest day"
+     * means recent/overall, not just today (which is commonly empty early in the day). An
+     * explicit "आज"/today still narrows to TODAY; week words behave as in [detect].
+     */
+    fun detectForReport(text: String): PnlPeriod {
+        val t = text.lowercase()
+        return when {
+            t.contains("आज") || t.contains("today") || t.contains("aaj") -> PnlPeriod.TODAY
+            t.contains("हफ्त") || t.contains("हफ़्त") || t.contains("सप्ताह") || t.contains("week") || t.contains("haft") ->
+                PnlPeriod.THIS_WEEK
+            else -> PnlPeriod.THIS_MONTH
+        }
+    }
 }
