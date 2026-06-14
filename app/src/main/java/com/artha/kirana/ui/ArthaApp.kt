@@ -57,7 +57,6 @@ import com.artha.kirana.ui.inventory.InventoryScreen
 import com.artha.kirana.ui.khata.KhataPartyDetail
 import com.artha.kirana.ui.khata.KhataScreen
 import com.artha.kirana.ui.pnl.PnlScreen
-import com.artha.kirana.ui.scan.ROUTE_SCAN
 import com.artha.kirana.ui.scan.ScanScreen
 import com.artha.kirana.ui.theme.BrandGold
 
@@ -102,7 +101,7 @@ fun ArthaApp() {
                     horizontalAlignment = Alignment.End,
                 ) {
                     ExtendedFloatingActionButton(
-                        onClick = { navController.navigate(ROUTE_SCAN) },
+                        onClick = { navController.navigate("scan/sales") },
                         containerColor = Mint,
                         contentColor = Ink,
                         icon = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
@@ -135,7 +134,9 @@ fun ArthaApp() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(TopDest.Home.route) { HomeScreen() }
-            composable(TopDest.Inventory.route) { InventoryScreen() }
+            composable(TopDest.Inventory.route) {
+                InventoryScreen(onScanChallan = { navController.navigate("scan/challan") })
+            }
             composable(TopDest.Khata.route) {
                 KhataScreen(onParty = { id -> navController.navigate("$ROUTE_KHATA_DETAIL/$id") })
             }
@@ -148,7 +149,13 @@ fun ArthaApp() {
             composable(ROUTE_SALE_ENTRY) {
                 SaleEntryScreen(onDone = { navController.popBackStack() })
             }
-            composable(ROUTE_SCAN) {
+            composable(
+                route = "scan/{purpose}",
+                arguments = listOf(navArgument("purpose") {
+                    type = NavType.StringType
+                    defaultValue = "sales"
+                }),
+            ) {
                 ScanScreen(onDone = { navController.popBackStack() })
             }
         }

@@ -50,7 +50,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.artha.kirana.domain.model.ParsedPurchaseItem
 import com.artha.kirana.domain.model.SaleEntry
 import com.artha.kirana.ui.common.EditableEntryCard
 import com.artha.kirana.ui.theme.Canvas
@@ -64,7 +63,6 @@ import com.artha.kirana.ui.theme.Line
 import com.artha.kirana.ui.theme.Mint
 import com.artha.kirana.ui.theme.PrimaryButton
 import com.artha.kirana.ui.theme.Rule
-import com.artha.kirana.ui.theme.Slate
 import com.artha.kirana.ui.theme.Tag
 import com.artha.kirana.ui.theme.TextMuted
 import com.artha.kirana.ui.theme.Ultraviolet
@@ -81,7 +79,7 @@ fun ScanScreen(
 ) {
     val context = LocalContext.current
     val state by vm.state.collectAsStateWithLifecycle()
-    val mode by vm.mode.collectAsStateWithLifecycle()
+    val salesMode by vm.salesMode.collectAsStateWithLifecycle()
 
     // iQOO / vivo camera hardening: persist the pending URI across process death.
     // The camera app can cold-restart this activity; SharedPreferences survives that.
@@ -152,25 +150,31 @@ fun ScanScreen(
                     style = MaterialTheme.typography.displaySmall,
                     color = HazardWhite,
                 )
-                Tag("☁ CLOUD · OPUS", color = Ultraviolet)
+                if (vm.purpose == ScanPurpose.SALES) {
+                    Tag("बिक्री / SALES", color = Ultraviolet)
+                } else {
+                    Tag("चालान / CHALLAN", color = Mint)
+                }
             }
             Rule(color = Ultraviolet)
 
-            // ── Mode toggle ────────────────────────────────────────────────────
-            val isIdle = state is ScanUiState.Idle || state is ScanUiState.Error
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModeToggleChip(
-                    label = "बही-खाता / LEDGER",
-                    selected = mode == ScanMode.LEDGER,
-                    enabled = isIdle,
-                    onClick = { vm.setMode(ScanMode.LEDGER) },
-                )
-                ModeToggleChip(
-                    label = "बिल / BILL",
-                    selected = mode == ScanMode.BILL,
-                    enabled = isIdle,
-                    onClick = { vm.setMode(ScanMode.BILL) },
-                )
+            // ── Sales sub-mode toggle (only for SALES purpose) ─────────────
+            if (vm.purpose == ScanPurpose.SALES) {
+                val isIdle = state is ScanUiState.Idle || state is ScanUiState.Error
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ModeToggleChip(
+                        label = "CUSTOMER BILL",
+                        selected = salesMode == SalesMode.CUSTOMER_BILL,
+                        enabled = isIdle,
+                        onClick = { vm.setSalesMode(SalesMode.CUSTOMER_BILL) },
+                    )
+                    ModeToggleChip(
+                        label = "DAY SCRIBBLE",
+                        selected = salesMode == SalesMode.DAY_SCRIBBLE,
+                        enabled = isIdle,
+                        onClick = { vm.setSalesMode(SalesMode.DAY_SCRIBBLE) },
+                    )
+                }
             }
 
             // ── Capture button ─────────────────────────────────────────────────
@@ -194,10 +198,14 @@ fun ScanScreen(
             when (val s = state) {
                 is ScanUiState.Idle -> {
                     Kicker(
-                        text = if (mode == ScanMode.LEDGER)
-                            "बही-खाता की फ़ोटो लें → खाता भर जाएगा"
-                        else
-                            "बिल की फ़ोटो लें → स्टॉक अपडेट होगा",
+                        text = when {
+                            vm.purpose == ScanPurpose.CHALLAN ->
+                                "चालान की फ़ोटो लें → स्टॉक अपडेट होगा"
+                            salesMode == SalesMode.CUSTOMER_BILL ->
+                                "ग्राहक के बिल की फ़ोटो लें → उधार खाते में जाएगा"
+                            else ->
+                                "बही-खाता की फ़ोटो लें → खाता भर जाएगा"
+                        },
                         color = TextMuted,
                     )
                 }
@@ -235,6 +243,16 @@ fun ScanScreen(
                         "${s.entries.size} ENTRIES FOUND · बही-खाता",
                         color = Mint,
                     )
+                    // Customer field — only shown in CUSTOMER_BILL mode
+                    if (salesMode == SalesMode.CUSTOMER_BILL) {
+                        OutlinedTextField(
+                            value = s.customer,
+                            onValueChange = { vm.setCustomer(it) },
+                            label = { Text("ग्राहक / Customer") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
                     s.entries.forEachIndexed { index, entry ->
                         LedgerEntryRow(
                             entry = entry,
@@ -255,24 +273,24 @@ fun ScanScreen(
                     )
                 }
 
-                is ScanUiState.BillReview -> {
+                is ScanUiState.ChallanReview -> {
                     Kicker(
-                        "${s.items.size} ITEMS FOUND · बिल",
+                        "${s.items.size} ITEMS FOUND · चालान",
                         color = Mint,
                     )
                     // Supplier field
                     OutlinedTextField(
                         value = s.supplier,
                         onValueChange = { vm.setSupplier(it) },
-                        label = { Text("Supplier · थोक विक्रेता (optional)") },
+                        label = { Text("सप्लायर / Supplier (optional)") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
-                    s.items.forEachIndexed { index, item ->
-                        BillItemRow(
-                            item = item,
-                            onChanged = { vm.updateItem(index, it) },
-                            onDelete = { vm.removeItem(index) },
+                    s.items.forEachIndexed { index, line ->
+                        ChallanLineRow(
+                            line = line,
+                            onChanged = { vm.updateChallanLine(index, it) },
+                            onDelete = { vm.removeChallanLine(index) },
                         )
                     }
                     PrimaryButton(
@@ -348,12 +366,12 @@ private fun LedgerEntryRow(
     }
 }
 
-// ── Bill item row (name / qty / price + delete) ───────────────────────────────
+// ── Challan line row (name / qty / cost read-only / sell price editable + delete) ──
 
 @Composable
-private fun BillItemRow(
-    item: ParsedPurchaseItem,
-    onChanged: (ParsedPurchaseItem) -> Unit,
+private fun ChallanLineRow(
+    line: ChallanLine,
+    onChanged: (ChallanLine) -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(feature = false) {
@@ -364,41 +382,54 @@ private fun BillItemRow(
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = item.name,
-                    onValueChange = { onChanged(item.copy(name = it)) },
+                    value = line.name,
+                    onValueChange = { onChanged(line.copy(name = it)) },
                     label = { Text("Item · वस्तु") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = if (item.qty == item.qty.toLong().toDouble())
-                            item.qty.toLong().toString()
+                        value = if (line.qty == line.qty.toLong().toDouble())
+                            line.qty.toLong().toString()
                         else
-                            item.qty.toString(),
-                        onValueChange = { onChanged(item.copy(qty = it.toDoubleOrNull() ?: item.qty)) },
+                            line.qty.toString(),
+                        onValueChange = { onChanged(line.copy(qty = it.toDoubleOrNull() ?: line.qty)) },
                         label = { Text("Qty") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                     OutlinedTextField(
-                        value = item.unit,
-                        onValueChange = { onChanged(item.copy(unit = it)) },
+                        value = line.unit,
+                        onValueChange = { onChanged(line.copy(unit = it)) },
                         label = { Text("Unit") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                     )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Cost — read-only, from the bill
                     OutlinedTextField(
-                        value = item.unitPrice?.let {
-                            if (it == it.toLong().toDouble()) it.toLong().toString()
-                            else it.toString()
-                        } ?: "",
-                        onValueChange = { onChanged(item.copy(unitPrice = it.toDoubleOrNull())) },
-                        label = { Text("₹/unit") },
+                        value = line.unitPrice?.let {
+                            if (it == it.toLong().toDouble()) "₹${it.toLong()}" else "₹$it"
+                        } ?: "—",
+                        onValueChange = {},
+                        label = { Text("Cost (bill)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        readOnly = true,
+                        enabled = false,
+                    )
+                    // Sell price — editable, blank initially
+                    OutlinedTextField(
+                        value = line.sellPrice,
+                        onValueChange = { onChanged(line.copy(sellPrice = it)) },
+                        label = { Text("Sell ₹") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        placeholder = { Text("—", color = TextMuted) },
                     )
                 }
             }

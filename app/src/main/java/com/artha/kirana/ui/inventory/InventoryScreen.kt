@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +39,10 @@ import com.artha.kirana.ui.theme.TextMuted
 import com.artha.kirana.ui.theme.Ultraviolet
 
 @Composable
-fun InventoryScreen(vm: InventoryViewModel = hiltViewModel()) {
+fun InventoryScreen(
+    onScanChallan: () -> Unit = {},
+    vm: InventoryViewModel = hiltViewModel(),
+) {
     val items by vm.items.collectAsStateWithLifecycle()
 
     // null = sheet closed; sentinel ADD item (id 0) = add mode; real item = edit mode.
@@ -79,16 +83,31 @@ fun InventoryScreen(vm: InventoryViewModel = hiltViewModel()) {
             }
         }
 
-        FloatingActionButton(
-            onClick = { showAdd = true; sheetItem = null },
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .size(56.dp),
-            shape = CircleShape,
-            containerColor = Mint,
-            contentColor = Ink,
-        ) { Icon(Icons.Filled.Add, contentDescription = "Add item") }
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            // Scan challan FAB — opens scan with CHALLAN purpose
+            FloatingActionButton(
+                onClick = onScanChallan,
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
+                containerColor = Mint,
+                contentColor = Ink,
+            ) { Icon(Icons.Filled.CameraAlt, contentDescription = "Scan challan") }
+
+            // Add item manually FAB
+            FloatingActionButton(
+                onClick = { showAdd = true; sheetItem = null },
+                modifier = Modifier.size(56.dp),
+                shape = CircleShape,
+                containerColor = Mint,
+                contentColor = Ink,
+            ) { Icon(Icons.Filled.Add, contentDescription = "Add item") }
+        }
     }
 
     if (showAdd || sheetItem != null) {

@@ -1,5 +1,6 @@
 package com.artha.kirana.ui.scan
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.artha.kirana.data.remote.CloudVisionClient
@@ -14,13 +15,24 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-enum class ScanMode { LEDGER, BILL }
+enum class ScanPurpose { SALES, CHALLAN }
+
+enum class SalesMode { CUSTOMER_BILL, DAY_SCRIBBLE }
+
+data class ChallanLine(
+    val name: String,
+    val qty: Double,
+    val unit: String,
+    val unitPrice: Double?,
+    val amount: Double?,
+    val sellPrice: String,  // editable text, blank initially
+)
 
 sealed class ScanUiState {
     object Idle : ScanUiState()
     object Reading : ScanUiState()
-    data class LedgerReview(val entries: List<SaleEntry>) : ScanUiState()
-    data class BillReview(val items: List<ParsedPurchaseItem>, val supplier: String) : ScanUiState()
+    data class LedgerReview(val entries: List<SaleEntry>, val customer: String) : ScanUiState()
+    data class ChallanReview(val items: List<ChallanLine>, val supplier: String) : ScanUiState()
     data class Error(val message: String) : ScanUiState()
     data class Done(val count: Int) : ScanUiState()
 }
@@ -30,18 +42,23 @@ class ScanViewModel @Inject constructor(
     private val cloudVisionClient: CloudVisionClient,
     private val logSale: LogSaleUseCase,
     private val logPurchase: LogPurchaseUseCase,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val _mode = MutableStateFlow(ScanMode.LEDGER)
-    val mode = _mode.asStateFlow()
+    val purpose: ScanPurpose =
+        if (savedStateHandle.get<String>("purpose") == "challan") ScanPurpose.CHALLAN
+        else ScanPurpose.SALES
+
+    private val _salesMode = MutableStateFlow(SalesMode.CUSTOMER_BILL)
+    val salesMode = _salesMode.asStateFlow()
 
     private val _state = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val state = _state.asStateFlow()
 
-    fun setMode(m: ScanMode) {
+    fun setSalesMode(m: SalesMode) {
         val s = _state.value
         if (s is ScanUiState.Idle || s is ScanUiState.Error) {
-            _mode.value = m
+            _salesMode.value = m
         }
     }
 
@@ -50,25 +67,48 @@ class ScanViewModel @Inject constructor(
         _state.value = ScanUiState.Reading
         viewModelScope.launch {
             try {
-                when (_mode.value) {
-                    ScanMode.LEDGER -> {
+                when (purpose) {
+                    ScanPurpose.SALES -> {
                         val entries = cloudVisionClient.extractLedger(base64)
-                        _state.value = if (entries.isEmpty()) {
-                            ScanUiState.Error(
-                                "कुछ पढ़ा नहीं गया — साफ़ फ़ोटो लें / Couldn't read it — take a clearer photo"
+                        if (entries.isEmpty()) {
+                            _state.value = ScanUiState.Error(
+                                "कुछ पढ़ा नहीं गया — साफ़ फ़ोटो लें / Couldn't read it"
                             )
                         } else {
-                            ScanUiState.LedgerReview(entries)
+                            val mode = _salesMode.value
+                            if (mode == SalesMode.CUSTOMER_BILL) {
+                                val customer = entries.firstOrNull()?.party ?: ""
+                                val mapped = entries.map { entry ->
+                                    entry.copy(
+                                        party = customer.ifBlank { entry.party },
+                                        type = if (entry.type == "repayment") entry.type else "credit",
+                                    )
+                                }
+                                _state.value = ScanUiState.LedgerReview(mapped, customer)
+                            } else {
+                                // DAY_SCRIBBLE: entries as-is, no forced customer
+                                _state.value = ScanUiState.LedgerReview(entries, "")
+                            }
                         }
                     }
-                    ScanMode.BILL -> {
+                    ScanPurpose.CHALLAN -> {
                         val bill = cloudVisionClient.extractBill(base64)
-                        _state.value = if (bill.items.isEmpty()) {
-                            ScanUiState.Error(
-                                "कुछ पढ़ा नहीं गया — साफ़ फ़ोटो लें / Couldn't read it — take a clearer photo"
+                        if (bill.items.isEmpty()) {
+                            _state.value = ScanUiState.Error(
+                                "कुछ पढ़ा नहीं गया — साफ़ फ़ोटो लें / Couldn't read it"
                             )
                         } else {
-                            ScanUiState.BillReview(bill.items, "")
+                            val lines = bill.items.map { item ->
+                                ChallanLine(
+                                    name = item.name,
+                                    qty = item.qty,
+                                    unit = item.unit,
+                                    unitPrice = item.unitPrice,
+                                    amount = item.amount,
+                                    sellPrice = "",
+                                )
+                            }
+                            _state.value = ScanUiState.ChallanReview(lines, "")
                         }
                     }
                 }
@@ -99,19 +139,30 @@ class ScanViewModel @Inject constructor(
         }
     }
 
-    // ── Bill editing ──────────────────────────────────────────────────────────
+    fun setCustomer(name: String) {
+        val current = _state.value as? ScanUiState.LedgerReview ?: return
+        // In CUSTOMER_BILL mode, propagate customer name to every row's party field
+        val updatedEntries = if (_salesMode.value == SalesMode.CUSTOMER_BILL) {
+            current.entries.map { it.copy(party = name) }
+        } else {
+            current.entries
+        }
+        _state.value = current.copy(entries = updatedEntries, customer = name)
+    }
 
-    fun updateItem(index: Int, item: ParsedPurchaseItem) {
-        val current = _state.value as? ScanUiState.BillReview ?: return
+    // ── Challan editing ───────────────────────────────────────────────────────
+
+    fun updateChallanLine(index: Int, line: ChallanLine) {
+        val current = _state.value as? ScanUiState.ChallanReview ?: return
         val updated = current.items.toMutableList()
         if (index in updated.indices) {
-            updated[index] = item
+            updated[index] = line
             _state.value = current.copy(items = updated)
         }
     }
 
-    fun removeItem(index: Int) {
-        val current = _state.value as? ScanUiState.BillReview ?: return
+    fun removeChallanLine(index: Int) {
+        val current = _state.value as? ScanUiState.ChallanReview ?: return
         val updated = current.items.toMutableList()
         if (index in updated.indices) {
             updated.removeAt(index)
@@ -120,7 +171,7 @@ class ScanViewModel @Inject constructor(
     }
 
     fun setSupplier(supplier: String) {
-        val current = _state.value as? ScanUiState.BillReview ?: return
+        val current = _state.value as? ScanUiState.ChallanReview ?: return
         _state.value = current.copy(supplier = supplier)
     }
 
@@ -141,9 +192,19 @@ class ScanViewModel @Inject constructor(
                     }
                     _state.value = ScanUiState.Done(count)
                 }
-                is ScanUiState.BillReview -> {
+                is ScanUiState.ChallanReview -> {
                     try {
-                        val count = logPurchase(s.items, s.supplier.ifBlank { null })
+                        val purchaseItems = s.items.map { line ->
+                            ParsedPurchaseItem(
+                                name = line.name,
+                                qty = line.qty,
+                                unit = line.unit,
+                                unitPrice = line.unitPrice,
+                                amount = line.amount,
+                                sellPrice = line.sellPrice.toDoubleOrNull(),
+                            )
+                        }
+                        val count = logPurchase(purchaseItems, s.supplier.ifBlank { null })
                         _state.value = ScanUiState.Done(count)
                     } catch (t: Throwable) {
                         Timber.e(t, "ScanViewModel: logPurchase failed")
