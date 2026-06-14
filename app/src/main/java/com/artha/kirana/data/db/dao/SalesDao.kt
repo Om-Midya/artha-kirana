@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.artha.kirana.data.db.entity.SaleEntity
+import com.artha.kirana.domain.model.ItemMarginRow
 import com.artha.kirana.domain.model.TopSellerRow
 import kotlinx.coroutines.flow.Flow
 
@@ -43,4 +44,14 @@ interface SalesDao {
             "GROUP BY itemId ORDER BY revenue DESC",
     )
     suspend fun topSellers(start: Long, end: Long): List<TopSellerRow>
+
+    @Query(
+        "SELECT itemId, itemName, " +
+            "COALESCE(SUM((unitPrice - unitCost) * qtySold),0) AS margin, " +
+            "COALESCE(SUM(amount),0) AS revenue " +
+            "FROM sales WHERE type != 'repayment' AND unitPrice IS NOT NULL AND unitCost IS NOT NULL " +
+            "AND timestamp BETWEEN :start AND :end " +
+            "GROUP BY itemId ORDER BY margin ASC",
+    )
+    suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow>
 }

@@ -1,6 +1,7 @@
 package com.artha.kirana.domain.repository
 
 import com.artha.kirana.data.db.entity.SaleEntity
+import com.artha.kirana.domain.model.ItemMarginRow
 import com.artha.kirana.domain.model.TopSellerRow
 import kotlinx.coroutines.flow.Flow
 
@@ -12,4 +13,5 @@ interface SalesRepository {
     fun cashBetween(start: Long, end: Long): Flow<Double>
     fun cogsBetween(start: Long, end: Long): Flow<Double>
     suspend fun topSellers(start: Long, end: Long): List<TopSellerRow>
+    suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow>
 }
