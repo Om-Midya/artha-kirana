@@ -3,6 +3,9 @@ package com.artha.kirana.data.llm
 import com.artha.kirana.data.remote.LlmHttpClient
 import com.artha.kirana.data.remote.LlmUnavailableException
 import com.artha.kirana.domain.model.SaleEntry
+import com.artha.kirana.util.JsonParser
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -22,6 +25,8 @@ class LlmEngine @Inject constructor(
     private val saleParser: SaleParser,
     private val paymentParser: PaymentParser,
 ) {
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+
     suspend fun health(): Boolean = client.health()
 
     suspend fun parseSale(text: String): Result<List<SaleEntry>> = try {
@@ -37,6 +42,26 @@ class LlmEngine @Inject constructor(
         Result.success(paymentParser.parse(content) ?: ParsedPayment(party = null, amount = null))
     } catch (e: LlmUnavailableException) {
         Result.failure(e)
+    }
+
+    /** Extracts the customer/person name mentioned in a query (romanized), or null. */
+    suspend fun extractCustomerName(text: String): Result<String?> = try {
+        val content = client.chat(CUSTOMER_NAME_SYSTEM_PROMPT, text, CUSTOMER_NAME_RESPONSE_FORMAT)
+        Result.success(parseCustomerName(content))
+    } catch (e: LlmUnavailableException) {
+        Result.failure(e)
+    }
+
+    /** Pure: raw LLM content → customer name (trimmed) or null. Never throws. */
+    fun parseCustomerName(raw: String): String? {
+        val jsonStr = JsonParser.extractJson(raw) ?: return null
+        return try {
+            json.decodeFromString(CustomerNameDto.serializer(), jsonStr).customer
+                ?.trim()
+                ?.takeUnless { it.isEmpty() || it.equals("null", true) || it.equals("none", true) }
+        } catch (t: Throwable) {
+            null
+        }
     }
 
     companion object {
@@ -148,5 +173,38 @@ Input: दो सौ जमा किए सुरेश ने
                 }
             }
         }
+
+        const val CUSTOMER_NAME_SYSTEM_PROMPT = """You are a kirana shop assistant. The shopkeeper is asking about ONE customer's account. Extract just that customer's name as JSON.
+Return ONLY: {"customer": string|null}
+No explanation. No markdown. Just the raw JSON object.
+- customer = the person's name ONLY, romanized to English letters (रमेश→Ramesh, प्रिया→Priya, सुरेश→Suresh). Remove का/को/ने/से tokens.
+- If no person is named, return {"customer": null}.
+
+Examples:
+Input: रमेश का हिसाब बताओ
+{"customer":"Ramesh"}
+Input: प्रिया कितना बकाया है
+{"customer":"Priya"}
+Input: सुरेश ने कुल कितना लिया
+{"customer":"Suresh"}
+Input: आज की कमाई
+{"customer":null}"""
+
+        val CUSTOMER_NAME_RESPONSE_FORMAT = buildJsonObject {
+            put("type", "json_schema")
+            putJsonObject("json_schema") {
+                put("name", "customer")
+                putJsonObject("schema") {
+                    put("type", "object")
+                    putJsonObject("properties") {
+                        putJsonObject("customer") { putJsonArray("type") { add("string"); add("null") } }
+                    }
+                    putJsonArray("required") { add("customer") }
+                }
+            }
+        }
     }
 }
+
+@Serializable
+private data class CustomerNameDto(val customer: String? = null)
