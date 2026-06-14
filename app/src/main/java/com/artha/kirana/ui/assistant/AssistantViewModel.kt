@@ -149,7 +149,8 @@ class AssistantViewModel @Inject constructor(
         is AssistantResult.PnlAnswer -> ChatMessage.PnlAnswer(id, summary)
         is AssistantResult.Reply -> ChatMessage.Reply(id, text)
         AssistantResult.Unavailable -> ChatMessage.Reply(id, "सर्वर बंद है — llama-server चालू करें।")
-        // TopSellersAnswer / CustomerAnswer / DayTrendAnswer are formatted into chat in the next task.
-        else -> ChatMessage.Reply(id, "…")
+        is AssistantResult.TopSellersAnswer -> ChatMessage.Reply(id, AnalyticsChatFormatter.topSellers(period, rows))
+        is AssistantResult.CustomerAnswer -> ChatMessage.Reply(id, AnalyticsChatFormatter.customer(name, summary))
+        is AssistantResult.DayTrendAnswer -> ChatMessage.Reply(id, AnalyticsChatFormatter.dayTrend(period, buckets))
     }
 }
