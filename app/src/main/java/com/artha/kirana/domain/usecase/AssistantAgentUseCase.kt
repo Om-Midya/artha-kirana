@@ -37,9 +37,10 @@ class AssistantAgentUseCase @Inject constructor(
         messages += AgentMessage(role = "user", content = userText)
         val tools = combinedTools()
 
-        repeat(MAX_HOPS) {
+        repeat(MAX_HOPS) { hop ->
             val reply = cloud.completeWithTools(messages, tools)
             val calls = reply.toolCalls
+            timber.log.Timber.i("Artha-agent hop=%d calls=%s content=%s", hop, calls?.joinToString { it.function.name }, reply.content?.take(60))
             if (calls.isNullOrEmpty()) {
                 return AssistantResult.Reply(reply.content?.trim().orEmpty().ifEmpty { FALLBACK_REPLY })
             }
@@ -58,14 +59,17 @@ class AssistantAgentUseCase @Inject constructor(
             messages += reply
             for (call in calls) {
                 val result = shopTools.execute(call.function.name, call.function.arguments)
+                timber.log.Timber.i("Artha-agent tool=%s args=%s -> %s", call.function.name, call.function.arguments.take(40), result.take(100))
                 messages += AgentMessage(role = "tool", toolCallId = call.id, content = result)
             }
         }
         // Hops exhausted (model kept exploring) — force ONE final text answer from the data already
         // gathered (tool_choice=none blocks further tool calls), so the user always gets a real reply.
-        val forced = runCatching {
+        val forcedResult = runCatching {
             cloud.completeWithTools(messages, tools, toolChoice = "none")
-        }.getOrNull()?.content?.trim()
+        }
+        timber.log.Timber.i("Artha-agent forced: err=%s content=%s", forcedResult.exceptionOrNull()?.message, forcedResult.getOrNull()?.content?.take(80))
+        val forced = forcedResult.getOrNull()?.content?.trim()
         return AssistantResult.Reply(forced?.takeIf { it.isNotEmpty() } ?: FALLBACK_REPLY)
     }
 

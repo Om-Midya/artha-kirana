@@ -11,8 +11,10 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,6 +31,14 @@ class CloudChatClient @Inject constructor(
 ) {
     private val apiKey: String get() = BuildConfig.OPENROUTER_KEY
     private val model: String get() = BuildConfig.OPENROUTER_MODEL
+
+    /**
+     * Serializer for tool-calling requests. explicitNulls=false is CRITICAL: the OpenAI/Anthropic
+     * tool protocol rejects (or silently ignores) stray `tool_calls:null` / `tool_call_id:null` /
+     * `content:null` fields — sending them on a `tool` result message makes the model never see the
+     * result and re-call the same tool forever. encodeDefaults keeps `type:"function"` on tool calls.
+     */
+    private val agentJson = Json { explicitNulls = false; encodeDefaults = true }
 
     suspend fun chat(system: String, user: String, responseFormat: JsonElement? = null): String {
         if (apiKey.isBlank()) throw LlmUnavailableException(null)
@@ -70,12 +80,20 @@ class CloudChatClient @Inject constructor(
             header(HttpHeaders.Authorization, "Bearer $apiKey")
             header("HTTP-Referer", "https://artha.kirana")
             header("X-Title", "Artha Kirana")
+            // Serialize with explicitNulls=false and send as a raw JSON string (bypassing the shared
+            // ContentNegotiation Json, which would emit null fields that break the tool protocol).
             setBody(
-                com.artha.kirana.data.remote.dto.AgentRequest(
-                    model = model,
-                    messages = messages,
-                    tools = tools,
-                    toolChoice = toolChoice,
+                TextContent(
+                    agentJson.encodeToString(
+                        com.artha.kirana.data.remote.dto.AgentRequest.serializer(),
+                        com.artha.kirana.data.remote.dto.AgentRequest(
+                            model = model,
+                            messages = messages,
+                            tools = tools,
+                            toolChoice = toolChoice,
+                        ),
+                    ),
+                    ContentType.Application.Json,
                 ),
             )
         }
