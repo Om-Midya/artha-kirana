@@ -1,5 +1,6 @@
 package com.artha.kirana.ui.home
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +46,7 @@ import com.artha.kirana.ui.theme.Card
 import com.artha.kirana.ui.theme.GhostButton
 import com.artha.kirana.ui.theme.HazardWhite
 import com.artha.kirana.ui.theme.Kicker
+import com.artha.kirana.ui.theme.Line
 import com.artha.kirana.ui.theme.Mint
 import com.artha.kirana.ui.theme.PrimaryButton
 import com.artha.kirana.ui.theme.Rule
@@ -42,6 +55,7 @@ import com.artha.kirana.ui.theme.Tag
 import com.artha.kirana.ui.theme.TextMuted
 import com.artha.kirana.ui.theme.TileYellow
 import com.artha.kirana.ui.theme.Ultraviolet
+import com.artha.kirana.util.TimeRange
 import com.artha.kirana.util.formatRupees
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +65,12 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
     val sales by vm.daySales.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<SaleEntity?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val selectedDay by vm.selectedDay.collectAsStateWithLifecycle()
+    val today = TimeRange.startOfToday()
+    val isToday = selectedDay == today
+    val canGoNext = selectedDay < today
+    var showCalendar by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -69,11 +89,21 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
         }
         Spacer(Modifier.height(10.dp))
         Rule(color = Ultraviolet) // today bar
+        DayNavBar(
+            label = if (isToday) "आज · TODAY" else TimeRange.dayLabel(selectedDay),
+            canGoNext = canGoNext,
+            onPrev = vm::previousDay,
+            onNext = vm::nextDay,
+            onPickDate = { showCalendar = true },
+        )
         Spacer(Modifier.height(16.dp))
 
         // Today hero — feature card, mono kicker + Anton ₹ number in mint.
         Card(feature = true) {
-            Kicker("आज की बिक्री · TODAY", color = Ultraviolet)
+            Kicker(
+                if (isToday) "आज की बिक्री · TODAY" else "बिक्री · ${TimeRange.dayLabel(selectedDay)}",
+                color = Ultraviolet,
+            )
             Spacer(Modifier.height(10.dp))
             Text(
                 formatRupees(revenue),
@@ -91,7 +121,7 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
         if (sales.isEmpty()) {
             Card {
                 Text(
-                    "अभी तक कोई बिक्री नहीं · No sales yet today.",
+                    "इस दिन कोई बिक्री नहीं · No sales on this day.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextMuted,
                 )
@@ -124,6 +154,65 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                     })
                 }
             }
+        }
+    }
+
+    if (showCalendar) {
+        val todayMs = remember { System.currentTimeMillis() }
+        val pickerState = rememberDatePickerState(
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean = utcTimeMillis <= todayMs
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { showCalendar = false },
+            confirmButton = {
+                PrimaryButton("OK", onClick = {
+                    pickerState.selectedDateMillis?.let { vm.selectDay(it) }
+                    showCalendar = false
+                })
+            },
+            dismissButton = { GhostButton("Cancel", onClick = { showCalendar = false }) },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayNavBar(
+    label: String,
+    canGoNext: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onPickDate: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onPrev) {
+            Icon(Icons.Filled.ChevronLeft, contentDescription = "Previous day", tint = Mint)
+        }
+        Row(
+            modifier = Modifier
+                .border(1.dp, Line, RoundedCornerShape(20.dp))
+                .clickable { onPickDate() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(label, style = MaterialTheme.typography.titleMedium, color = HazardWhite)
+            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Pick a date", tint = Mint)
+        }
+        IconButton(onClick = onNext, enabled = canGoNext) {
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = "Next day",
+                tint = if (canGoNext) Mint else TextMuted,
+            )
         }
     }
 }
