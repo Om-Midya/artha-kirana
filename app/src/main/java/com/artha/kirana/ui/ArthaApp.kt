@@ -19,9 +19,12 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Text
@@ -32,6 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.artha.kirana.ui.theme.Canvas
+import com.artha.kirana.ui.theme.Ink
+import com.artha.kirana.ui.theme.Line
+import com.artha.kirana.ui.theme.Mint
+import com.artha.kirana.ui.theme.TextMuted
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -87,8 +95,10 @@ fun ArthaApp() {
             if (currentRoute == TopDest.Home.route) {
                 ExtendedFloatingActionButton(
                     onClick = { navController.navigate(ROUTE_SALE_ENTRY) },
+                    containerColor = Mint,
+                    contentColor = Ink,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("New Sale") },
+                    text = { Text("NEW SALE", style = MaterialTheme.typography.labelLarge) },
                 )
             }
         },
@@ -126,7 +136,10 @@ private fun ArthaBottomBar(navController: NavController, currentRoute: String?) 
         }
     }
     Box(Modifier.fillMaxWidth()) {
-        NavigationBar {
+        NavigationBar(
+            containerColor = Canvas,
+            modifier = Modifier.border(width = 1.dp, color = Line),
+        ) {
             BarItem(TopDest.Home, currentRoute, ::go)
             BarItem(TopDest.Inventory, currentRoute, ::go)
             Spacer(Modifier.weight(1f)) // center gap for the raised Assistant FAB
@@ -135,7 +148,9 @@ private fun ArthaBottomBar(navController: NavController, currentRoute: String?) 
         }
         FloatingActionButton(
             onClick = { go(ROUTE_ASSISTANT) },
-            containerColor = BrandGold,
+            containerColor = Mint,
+            contentColor = Ink,
+            shape = androidx.compose.foundation.shape.CircleShape,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .offset(y = (-24).dp)
@@ -156,6 +171,13 @@ private fun RowScope.BarItem(
         selected = currentRoute == dest.route,
         onClick = { onGo(dest.route) },
         icon = { Icon(dest.icon, contentDescription = dest.label) },
-        label = { Text(dest.label) },
+        label = { Text(dest.label.uppercase(), style = MaterialTheme.typography.labelSmall) },
+        colors = NavigationBarItemDefaults.colors(
+            selectedIconColor = Ink,
+            selectedTextColor = Mint,
+            indicatorColor = Mint,
+            unselectedIconColor = TextMuted,
+            unselectedTextColor = TextMuted,
+        ),
     )
 }
