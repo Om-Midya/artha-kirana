@@ -4,6 +4,7 @@ import com.artha.kirana.data.db.dao.KhataDao
 import com.artha.kirana.data.db.dao.KhataTransactionDao
 import com.artha.kirana.data.db.entity.KhataEntity
 import com.artha.kirana.data.db.entity.KhataTransactionEntity
+import com.artha.kirana.domain.repository.CustomerRepository
 import com.artha.kirana.domain.repository.KhataRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -11,6 +12,7 @@ import javax.inject.Inject
 class KhataRepositoryImpl @Inject constructor(
     private val khataDao: KhataDao,
     private val txnDao: KhataTransactionDao,
+    private val customers: CustomerRepository,
 ) : KhataRepository {
 
     override fun observeAll(): Flow<List<KhataEntity>> = khataDao.observeAll()
@@ -36,9 +38,10 @@ class KhataRepositoryImpl @Inject constructor(
     }
 
     private suspend fun adjust(party: String, delta: Double, type: String, saleId: Long?, amount: Double) {
-        val existing = khataDao.findByName(party)
+        val customerId = customers.resolveOrCreate(party)
+        val existing = khataDao.findByCustomerId(customerId)
         val partyId = if (existing == null) {
-            khataDao.insert(KhataEntity(partyName = party, balance = delta))
+            khataDao.insert(KhataEntity(customerId = customerId, partyName = party, balance = delta))
         } else {
             khataDao.update(
                 existing.copy(
