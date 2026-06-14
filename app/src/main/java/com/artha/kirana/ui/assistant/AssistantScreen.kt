@@ -153,8 +153,14 @@ fun AssistantScreen(viewModel: AssistantViewModel = hiltViewModel()) {
                                 onCancel = { viewModel.cancel(m.id) },
                             )
                             is ChatMessage.PnlAnswer -> PnlAnswerBubble(m.summary)
-                            // Placeholder: renders text only — the next task adds the visual cards.
-                            is ChatMessage.AgentAnswer -> ReplyBubble(m.text)
+                            is ChatMessage.AgentAnswer -> Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ReplyBubble(m.text)
+                                m.visuals.forEach { visual ->
+                                    AgentVisualCard(visual, Modifier.fillMaxWidth())
+                                }
+                            }
                         }
                     }
                 }
