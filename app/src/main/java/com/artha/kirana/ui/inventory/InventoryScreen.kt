@@ -1,11 +1,16 @@
 package com.artha.kirana.ui.inventory
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
@@ -23,6 +28,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.artha.kirana.data.db.entity.ItemEntity
+import com.artha.kirana.ui.theme.Card
+import com.artha.kirana.ui.theme.HazardWhite
+import com.artha.kirana.ui.theme.Ink
+import com.artha.kirana.ui.theme.Mint
+import com.artha.kirana.ui.theme.Rule
+import com.artha.kirana.ui.theme.SectionTitle
+import com.artha.kirana.ui.theme.TextMuted
+import com.artha.kirana.ui.theme.Ultraviolet
 
 @Composable
 fun InventoryScreen(vm: InventoryViewModel = hiltViewModel()) {
@@ -33,22 +46,35 @@ fun InventoryScreen(vm: InventoryViewModel = hiltViewModel()) {
     var showAdd by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-        if (items.isEmpty()) {
-            Text(
-                "No items yet. Tap + to add stock.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.Center),
-            )
-        } else {
-            LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(items, key = { it.id }) { item ->
-                    ItemCard(item = item, onClick = { sheetItem = item; showAdd = false })
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+        ) {
+            Spacer(Modifier.height(12.dp))
+            Text("STOCK", style = MaterialTheme.typography.displaySmall, color = HazardWhite)
+            Spacer(Modifier.height(10.dp))
+            Rule(color = Ultraviolet)
+            Spacer(Modifier.height(16.dp))
+
+            SectionTitle("INVENTORY")
+            Spacer(Modifier.height(10.dp))
+
+            if (items.isEmpty()) {
+                Card {
+                    Text(
+                        "कोई आइटम नहीं · No items yet. Tap + to add stock.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        ItemCard(item = item, onClick = { sheetItem = item; showAdd = false })
+                    }
                 }
             }
         }
@@ -57,7 +83,11 @@ fun InventoryScreen(vm: InventoryViewModel = hiltViewModel()) {
             onClick = { showAdd = true; sheetItem = null },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
+                .padding(16.dp)
+                .size(56.dp),
+            shape = CircleShape,
+            containerColor = Mint,
+            contentColor = Ink,
         ) { Icon(Icons.Filled.Add, contentDescription = "Add item") }
     }
 
