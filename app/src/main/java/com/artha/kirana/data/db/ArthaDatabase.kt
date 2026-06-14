@@ -2,11 +2,13 @@ package com.artha.kirana.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.artha.kirana.data.db.dao.CustomersDao
 import com.artha.kirana.data.db.dao.ItemsDao
 import com.artha.kirana.data.db.dao.KhataDao
 import com.artha.kirana.data.db.dao.KhataTransactionDao
 import com.artha.kirana.data.db.dao.PurchasesDao
 import com.artha.kirana.data.db.dao.SalesDao
+import com.artha.kirana.data.db.entity.CustomerEntity
 import com.artha.kirana.data.db.entity.ItemEntity
 import com.artha.kirana.data.db.entity.KhataEntity
 import com.artha.kirana.data.db.entity.KhataTransactionEntity
@@ -20,8 +22,9 @@ import com.artha.kirana.data.db.entity.SaleEntity
         PurchaseEntity::class,
         KhataEntity::class,
         KhataTransactionEntity::class,
+        CustomerEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class ArthaDatabase : RoomDatabase() {
@@ -30,4 +33,5 @@ abstract class ArthaDatabase : RoomDatabase() {
     abstract fun purchasesDao(): PurchasesDao
     abstract fun khataDao(): KhataDao
     abstract fun khataTransactionDao(): KhataTransactionDao
+    abstract fun customersDao(): CustomersDao
 }

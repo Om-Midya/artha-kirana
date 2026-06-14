@@ -3,6 +3,7 @@ package com.artha.kirana.di
 import android.content.Context
 import androidx.room.Room
 import com.artha.kirana.data.db.ArthaDatabase
+import com.artha.kirana.data.db.dao.CustomersDao
 import com.artha.kirana.data.db.dao.ItemsDao
 import com.artha.kirana.data.db.dao.KhataDao
 import com.artha.kirana.data.db.dao.KhataTransactionDao
@@ -42,4 +43,7 @@ object DatabaseModule {
 
     @Provides
     fun provideKhataTransactionDao(db: ArthaDatabase): KhataTransactionDao = db.khataTransactionDao()
+
+    @Provides
+    fun provideCustomersDao(db: ArthaDatabase): CustomersDao = db.customersDao()
 }
