@@ -16,4 +16,5 @@ interface SalesRepository {
     suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow>
     fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>>
     suspend fun lifetimeValue(customerId: Long): Double
+    suspend fun between(start: Long, end: Long): List<SaleEntity>
 }

@@ -21,4 +21,5 @@ class SalesRepositoryImpl @Inject constructor(
     override suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow> = dao.itemMargins(start, end)
     override fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>> = dao.observeForCustomer(customerId)
     override suspend fun lifetimeValue(customerId: Long): Double = dao.lifetimeValue(customerId)
+    override suspend fun between(start: Long, end: Long): List<SaleEntity> = dao.between(start, end)
 }
