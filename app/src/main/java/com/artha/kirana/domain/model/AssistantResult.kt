@@ -23,6 +23,9 @@ sealed interface AssistantResult {
     /** A plain text reply (acks, "didn't understand", greetings). */
     data class Reply(val text: String) : AssistantResult
 
+    /** An agent answer that may carry structured visuals (charts/cards) alongside the text. */
+    data class AgentAnswer(val text: String, val visuals: List<AgentVisual>) : AssistantResult
+
     /** The on-device LLM server was unreachable. */
     data object Unavailable : AssistantResult
 }

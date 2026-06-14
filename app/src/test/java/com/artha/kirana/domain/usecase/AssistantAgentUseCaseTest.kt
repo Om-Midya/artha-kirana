@@ -40,17 +40,17 @@ class AssistantAgentUseCaseTest {
     // ── tests ─────────────────────────────────────────────────────────────────
 
     @Test
-    fun `final text immediately returns Reply`() = runTest {
+    fun `final text immediately returns AgentAnswer`() = runTest {
         coEvery { cloud.completeWithTools(any(), any(), any()) } returns textTurn("आज ₹350 की बिक्री हुई।")
 
         val result = useCase.run(emptyList(), "आज कितना बिका?")
 
-        assertTrue(result is AssistantResult.Reply)
-        assertEquals("आज ₹350 की बिक्री हुई।", (result as AssistantResult.Reply).text)
+        assertTrue(result is AssistantResult.AgentAnswer)
+        assertEquals("आज ₹350 की बिक्री हुई।", (result as AssistantResult.AgentAnswer).text)
     }
 
     @Test
-    fun `read tool then final text returns Reply and invokes tool`() = runTest {
+    fun `read tool then final text returns AgentAnswer and invokes tool`() = runTest {
         coEvery { shopTools.execute("get_pnl", any()) } returns """{"profit":170}"""
         coEvery { cloud.completeWithTools(any(), any(), any()) } returnsMany listOf(
             toolTurn("get_pnl", """{"period":"today"}"""),
@@ -59,8 +59,8 @@ class AssistantAgentUseCaseTest {
 
         val result = useCase.run(emptyList(), "आज का मुनाफा बताओ")
 
-        assertTrue(result is AssistantResult.Reply)
-        assertEquals("आज का मुनाफा ₹170 है।", (result as AssistantResult.Reply).text)
+        assertTrue(result is AssistantResult.AgentAnswer)
+        assertEquals("आज का मुनाफा ₹170 है।", (result as AssistantResult.AgentAnswer).text)
         coVerify { shopTools.execute("get_pnl", any()) }
     }
 

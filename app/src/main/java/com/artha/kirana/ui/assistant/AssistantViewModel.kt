@@ -64,14 +64,15 @@ class AssistantViewModel @Inject constructor(
 
     /**
      * Snapshots the last 6 messages as [AgentMessage] for follow-up context.
-     * Only plain user-text and assistant-reply bubbles are mapped; draft/card bubbles are skipped
-     * because they carry structured data (entries, summary) that the cloud model doesn't need.
+     * Only plain user-text and assistant-reply/agent-answer bubbles are mapped; draft/card bubbles
+     * are skipped because they carry structured data (entries, summary) the cloud model doesn't need.
      */
     private fun recentHistory(): List<AgentMessage> =
         _messages.value.takeLast(6).mapNotNull { m ->
             when (m) {
                 is ChatMessage.User -> AgentMessage(role = "user", content = m.text)
                 is ChatMessage.Reply -> AgentMessage(role = "assistant", content = m.text)
+                is ChatMessage.AgentAnswer -> AgentMessage(role = "assistant", content = m.text)
                 else -> null   // skip SaleDraft, PaymentDraft, PnlAnswer
             }
         }
@@ -164,6 +165,7 @@ class AssistantViewModel @Inject constructor(
         is AssistantResult.PaymentDraft -> ChatMessage.PaymentDraft(id, party, amount)
         is AssistantResult.PnlAnswer -> ChatMessage.PnlAnswer(id, summary)
         is AssistantResult.Reply -> ChatMessage.Reply(id, text)
+        is AssistantResult.AgentAnswer -> ChatMessage.AgentAnswer(id, text, visuals)
         AssistantResult.Unavailable -> ChatMessage.Reply(id, "सर्वर बंद है — llama-server चालू करें।")
         is AssistantResult.TopSellersAnswer -> ChatMessage.Reply(id, AnalyticsChatFormatter.topSellers(period, rows))
         is AssistantResult.CustomerAnswer -> ChatMessage.Reply(id, AnalyticsChatFormatter.customer(name, summary))

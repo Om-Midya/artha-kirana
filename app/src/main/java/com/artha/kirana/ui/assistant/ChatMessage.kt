@@ -1,5 +1,6 @@
 package com.artha.kirana.ui.assistant
 
+import com.artha.kirana.domain.model.AgentVisual
 import com.artha.kirana.domain.model.PnlSummary
 import com.artha.kirana.domain.model.SaleEntry
 
@@ -24,4 +25,6 @@ sealed interface ChatMessage {
         val status: DraftStatus = DraftStatus.Pending,
     ) : ChatMessage
     data class PnlAnswer(override val id: Long, val summary: PnlSummary) : ChatMessage
+    /** An agent text answer with optional structured visuals (charts/cards). */
+    data class AgentAnswer(override val id: Long, val text: String, val visuals: List<AgentVisual>) : ChatMessage
 }

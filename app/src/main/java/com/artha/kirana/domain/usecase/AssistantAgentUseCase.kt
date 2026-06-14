@@ -3,6 +3,8 @@ package com.artha.kirana.domain.usecase
 import com.artha.kirana.data.llm.ShopDataTools
 import com.artha.kirana.data.remote.CloudChatClient
 import com.artha.kirana.data.remote.dto.AgentMessage
+import com.artha.kirana.domain.model.AgentVisual
+import com.artha.kirana.domain.model.AgentVisuals
 import com.artha.kirana.domain.model.AssistantResult
 import com.artha.kirana.domain.model.SaleEntry
 import kotlinx.serialization.Serializable
@@ -36,13 +38,16 @@ class AssistantAgentUseCase @Inject constructor(
         messages += history
         messages += AgentMessage(role = "user", content = userText)
         val tools = combinedTools()
+        // Accumulate visuals keyed by tool name; later calls overwrite earlier ones (same tool).
+        val visuals = LinkedHashMap<String, AgentVisual>()
 
         repeat(MAX_HOPS) { hop ->
             val reply = cloud.completeWithTools(messages, tools)
             val calls = reply.toolCalls
             timber.log.Timber.i("Artha-agent hop=%d calls=%s content=%s", hop, calls?.joinToString { it.function.name }, reply.content?.take(60))
             if (calls.isNullOrEmpty()) {
-                return AssistantResult.Reply(reply.content?.trim().orEmpty().ifEmpty { FALLBACK_REPLY })
+                val text = reply.content?.trim().orEmpty().ifEmpty { FALLBACK_REPLY }
+                return AssistantResult.AgentAnswer(text, visuals.values.toList().takeLast(3))
             }
             // Action tools terminate the loop BEFORE echoing (so we never leave a tool_call unanswered).
             calls.firstOrNull { it.function.name == TOOL_PROPOSE_SALE }?.let { call ->
@@ -60,6 +65,7 @@ class AssistantAgentUseCase @Inject constructor(
             for (call in calls) {
                 val result = shopTools.execute(call.function.name, call.function.arguments)
                 timber.log.Timber.i("Artha-agent tool=%s args=%s -> %s", call.function.name, call.function.arguments.take(40), result.take(100))
+                AgentVisuals.fromTool(call.function.name, result)?.let { visuals[call.function.name] = it }
                 messages += AgentMessage(role = "tool", toolCallId = call.id, content = result)
             }
         }
@@ -70,7 +76,10 @@ class AssistantAgentUseCase @Inject constructor(
         }
         timber.log.Timber.i("Artha-agent forced: err=%s content=%s", forcedResult.exceptionOrNull()?.message, forcedResult.getOrNull()?.content?.take(80))
         val forced = forcedResult.getOrNull()?.content?.trim()
-        return AssistantResult.Reply(forced?.takeIf { it.isNotEmpty() } ?: FALLBACK_REPLY)
+        return AssistantResult.AgentAnswer(
+            forced?.takeIf { it.isNotEmpty() } ?: FALLBACK_REPLY,
+            visuals.values.toList().takeLast(3),
+        )
     }
 
     private fun combinedTools(): JsonArray = buildJsonArray {
