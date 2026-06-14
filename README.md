@@ -7,6 +7,23 @@
 
 Artha hits three angles this problem statement names — **phone-as-POS, credit-scoring for the unbanked, and a vernacular assistant** — fused into one loop.
 
+📊 **Pitch deck:** [`docs/Artha-Pitch.pptx`](docs/Artha-Pitch.pptx)
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/home.png" width="210"><br><sub><b>Home + date navigator</b><br>any day's P&L · ◄ date ►</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/pnl.png" width="210"><br><sub><b>P&amp;L dashboard</b><br>revenue · profit · udhaar · chart</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/scan-sales.png" width="210"><br><sub><b>Scan a sale</b><br>customer bill / day scribble</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/scan-challan.png" width="210"><br><sub><b>Scan a challan</b><br>supplier bill → priced stock</sub></td>
+    <td align="center"><img src="docs/screenshots/assistant.png" width="210"><br><sub><b>Ask in Hindi</b><br>voice or text, your language</sub></td>
+    <td align="center"><img src="docs/screenshots/assistant-chart.png" width="210"><br><sub><b>Agent + charts</b><br>reads live data, answers visually</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## Problem
