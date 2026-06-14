@@ -39,7 +39,7 @@
       }
     });
   }, { rootMargin: "-45% 0px -50% 0px" });
-  ["problem", "loop", "product", "edge"].forEach((id) => {
+  ["problem", "loop", "product", "edge", "trust"].forEach((id) => {
     const s = document.getElementById(id); if (s) secObs.observe(s);
   });
 
