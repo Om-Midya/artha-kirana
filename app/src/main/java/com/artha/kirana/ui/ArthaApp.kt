@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -55,6 +57,8 @@ import com.artha.kirana.ui.inventory.InventoryScreen
 import com.artha.kirana.ui.khata.KhataPartyDetail
 import com.artha.kirana.ui.khata.KhataScreen
 import com.artha.kirana.ui.pnl.PnlScreen
+import com.artha.kirana.ui.scan.ROUTE_SCAN
+import com.artha.kirana.ui.scan.ScanScreen
 import com.artha.kirana.ui.theme.BrandGold
 
 /** The four corner destinations (the center slot is the raised Assistant FAB). */
@@ -93,13 +97,35 @@ fun ArthaApp() {
         },
         floatingActionButton = {
             if (currentRoute == TopDest.Home.route) {
-                ExtendedFloatingActionButton(
-                    onClick = { navController.navigate(ROUTE_SALE_ENTRY) },
-                    containerColor = Mint,
-                    contentColor = Ink,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("NEW SALE", style = MaterialTheme.typography.labelLarge) },
-                )
+                androidx.compose.foundation.layout.Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    ExtendedFloatingActionButton(
+                        onClick = { navController.navigate(ROUTE_SCAN) },
+                        containerColor = Mint,
+                        contentColor = Ink,
+                        icon = { Icon(Icons.Filled.CameraAlt, contentDescription = null) },
+                        text = {
+                            Text(
+                                "SCAN",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        },
+                    )
+                    ExtendedFloatingActionButton(
+                        onClick = { navController.navigate(ROUTE_SALE_ENTRY) },
+                        containerColor = Mint,
+                        contentColor = Ink,
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = {
+                            Text(
+                                "NEW SALE",
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        },
+                    )
+                }
             }
         },
     ) { innerPadding ->
@@ -121,6 +147,9 @@ fun ArthaApp() {
             composable(ROUTE_ASSISTANT) { AssistantScreen() }
             composable(ROUTE_SALE_ENTRY) {
                 SaleEntryScreen(onDone = { navController.popBackStack() })
+            }
+            composable(ROUTE_SCAN) {
+                ScanScreen(onDone = { navController.popBackStack() })
             }
         }
     }
