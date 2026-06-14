@@ -37,6 +37,33 @@ class TimeRangeTest {
     }
 
     @Test
+    fun `startOfDay is idempotent`() {
+        val now = System.currentTimeMillis()
+        val s = TimeRange.startOfDay(now)
+        assertEquals(s, TimeRange.startOfDay(s))
+    }
+
+    @Test
+    fun `next then prev returns same day`() {
+        val s = TimeRange.startOfDay(System.currentTimeMillis())
+        assertEquals(s, TimeRange.prevDayStart(TimeRange.nextDayStart(s)))
+    }
+
+    @Test
+    fun `nextDayStart is a later day start`() {
+        val s = TimeRange.startOfDay(System.currentTimeMillis())
+        val n = TimeRange.nextDayStart(s)
+        assertTrue(n > s)
+        assertEquals(n, TimeRange.startOfDay(n))
+    }
+
+    @Test
+    fun `localDayStartFromUtcMillis yields a local midnight`() {
+        val out = TimeRange.localDayStartFromUtcMillis(System.currentTimeMillis())
+        assertEquals(out, TimeRange.startOfDay(out))
+    }
+
+    @Test
     fun last7DayBucketsAreContiguousAndEndToday() {
         val now = at(2026, Calendar.JUNE, 17, 14, 5)
         val buckets = TimeRange.last7DayBuckets(now)

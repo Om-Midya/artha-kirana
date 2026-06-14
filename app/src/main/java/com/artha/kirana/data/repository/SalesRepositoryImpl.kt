@@ -22,4 +22,5 @@ class SalesRepositoryImpl @Inject constructor(
     override fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>> = dao.observeForCustomer(customerId)
     override suspend fun lifetimeValue(customerId: Long): Double = dao.lifetimeValue(customerId)
     override suspend fun between(start: Long, end: Long): List<SaleEntity> = dao.between(start, end)
+    override fun observeBetween(start: Long, end: Long): Flow<List<SaleEntity>> = dao.observeBetween(start, end)
 }

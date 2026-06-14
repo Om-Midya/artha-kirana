@@ -17,4 +17,5 @@ interface SalesRepository {
     fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>>
     suspend fun lifetimeValue(customerId: Long): Double
     suspend fun between(start: Long, end: Long): List<SaleEntity>
+    fun observeBetween(start: Long, end: Long): Flow<List<SaleEntity>>
 }

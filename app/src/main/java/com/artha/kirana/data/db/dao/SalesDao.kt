@@ -31,6 +31,10 @@ interface SalesDao {
     @Query("SELECT * FROM sales WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
     suspend fun between(start: Long, end: Long): List<SaleEntity>
 
+    /** Reactive version of [between] — emits a new list whenever the DB changes in the window. */
+    @Query("SELECT * FROM sales WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
+    fun observeBetween(start: Long, end: Long): Flow<List<SaleEntity>>
+
     /**
      * Cost of goods sold = sum of qtySold*costPrice for non-repayment sales joined to items.
      * NOTE: reads LIVE items.costPrice (not the sales.unitCost snapshot), and excludes

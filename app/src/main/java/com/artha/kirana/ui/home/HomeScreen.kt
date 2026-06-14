@@ -47,8 +47,8 @@ import com.artha.kirana.util.formatRupees
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
-    val revenue by vm.todayRevenue.collectAsStateWithLifecycle()
-    val sales by vm.recentSales.collectAsStateWithLifecycle()
+    val revenue by vm.revenue.collectAsStateWithLifecycle()
+    val sales by vm.daySales.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<SaleEntity?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
