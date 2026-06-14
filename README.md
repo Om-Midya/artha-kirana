@@ -8,6 +8,7 @@
 
 Artha hits three angles this problem statement names — **phone-as-POS, credit-scoring for the unbanked, and a vernacular assistant** — fused into one loop.
 
+🌐 **Animated walkthrough:** open [`presentation/index.html`](presentation/index.html) — a self-contained one-page site (bundled fonts + screenshots, scroll animations, the interactive loop, a live Artha-Score dial).
 📊 **Pitch deck:** [`docs/Artha-Pitch.pptx`](docs/Artha-Pitch.pptx)
 
 ## Screenshots
