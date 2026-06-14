@@ -19,10 +19,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (BuildConfig.DEBUG) {
+        enableEdgeToEdge()
+        if (BuildConfig.DEBUG && savedInstanceState == null) {
             lifecycleScope.launch { seeder.seedIfEmpty() }
         }
-        enableEdgeToEdge()
         setContent {
             ArthaTheme {
                 ArthaApp()
