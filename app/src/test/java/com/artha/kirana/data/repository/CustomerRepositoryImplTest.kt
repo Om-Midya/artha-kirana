@@ -30,4 +30,16 @@ class CustomerRepositoryImplTest {
         assertEquals(12L, repo.resolveOrCreate("Priya"))
         coVerify(exactly = 1) { dao.insert(match { it.name == "Priya" }) }
     }
+
+    @Test
+    fun trimsNameBeforeLookupAndInsert() = runTest {
+        coEvery { dao.findByName("Ramesh") } returns null
+        coEvery { dao.insert(any()) } returns 5L
+
+        assertEquals(5L, repo.resolveOrCreate("  Ramesh  "))
+
+        // looked up and inserted with the trimmed name (no leading/trailing space)
+        coVerify(exactly = 1) { dao.findByName("Ramesh") }
+        coVerify(exactly = 1) { dao.insert(match { it.name == "Ramesh" }) }
+    }
 }

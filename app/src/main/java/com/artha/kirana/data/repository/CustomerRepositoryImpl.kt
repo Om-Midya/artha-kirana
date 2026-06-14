@@ -10,8 +10,10 @@ class CustomerRepositoryImpl @Inject constructor(
     private val dao: CustomersDao,
 ) : CustomerRepository {
 
-    override suspend fun resolveOrCreate(name: String): Long =
-        dao.findByName(name)?.id ?: dao.insert(CustomerEntity(name = name))
+    override suspend fun resolveOrCreate(name: String): Long {
+        val trimmed = name.trim()
+        return dao.findByName(trimmed)?.id ?: dao.insert(CustomerEntity(name = trimmed))
+    }
 
     override suspend fun findByName(name: String): CustomerEntity? = dao.findByName(name)
 
