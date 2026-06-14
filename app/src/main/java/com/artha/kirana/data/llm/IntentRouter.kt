@@ -1,6 +1,6 @@
 package com.artha.kirana.data.llm
 
-import com.artha.kirana.data.remote.LlmHttpClient
+import com.artha.kirana.data.remote.ChatClient
 import com.artha.kirana.data.remote.LlmUnavailableException
 import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.util.JsonParser
@@ -24,7 +24,7 @@ private data class IntentDto(val intent: String = "unknown")
  */
 @Singleton
 class IntentRouter @Inject constructor(
-    private val client: LlmHttpClient,
+    private val client: ChatClient,
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 

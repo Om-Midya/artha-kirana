@@ -1,6 +1,6 @@
 package com.artha.kirana.data.llm
 
-import com.artha.kirana.data.remote.LlmHttpClient
+import com.artha.kirana.data.remote.ChatClient
 import com.artha.kirana.data.remote.LlmUnavailableException
 import com.artha.kirana.domain.model.SaleEntry
 import com.artha.kirana.util.JsonParser
@@ -16,12 +16,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Orchestrates on-device LLM calls: builds the prompt, calls [LlmHttpClient], extracts JSON.
+ * Orchestrates LLM calls: builds the prompt, calls [ChatClient], extracts JSON.
  * Returns a [Result] so callers can degrade gracefully when the server is offline.
  */
 @Singleton
 class LlmEngine @Inject constructor(
-    private val client: LlmHttpClient,
+    private val client: ChatClient,
     private val saleParser: SaleParser,
     private val paymentParser: PaymentParser,
 ) {
