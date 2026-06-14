@@ -61,7 +61,12 @@ class AssistantAgentUseCase @Inject constructor(
                 messages += AgentMessage(role = "tool", toolCallId = call.id, content = result)
             }
         }
-        return AssistantResult.Reply(FALLBACK_REPLY)
+        // Hops exhausted (model kept exploring) — force ONE final text answer from the data already
+        // gathered (tool_choice=none blocks further tool calls), so the user always gets a real reply.
+        val forced = runCatching {
+            cloud.completeWithTools(messages, tools, toolChoice = "none")
+        }.getOrNull()?.content?.trim()
+        return AssistantResult.Reply(forced?.takeIf { it.isNotEmpty() } ?: FALLBACK_REPLY)
     }
 
     private fun combinedTools(): JsonArray = buildJsonArray {
@@ -128,7 +133,7 @@ class AssistantAgentUseCase @Inject constructor(
     @Serializable private data class ProposePaymentArgs(val party: String? = null, val amount: Double? = null)
 
     companion object {
-        const val MAX_HOPS = 5
+        const val MAX_HOPS = 6
         const val TOOL_PROPOSE_SALE = "propose_sale"
         const val TOOL_PROPOSE_PAYMENT = "propose_payment"
         const val FALLBACK_REPLY = "अभी जवाब नहीं बना — थोड़ा अलग तरीके से पूछें।"
@@ -137,8 +142,10 @@ class AssistantAgentUseCase @Inject constructor(
             You are Artha, an assistant for an Indian kirana (corner-shop) owner. The shopkeeper writes
             in Hindi/Hinglish. Answer in short, friendly Hindi/Hinglish with concrete numbers.
             Use the tools to READ shop data before answering money/stock/customer questions — never guess
-            figures. You may call several tools, then summarise. To RECORD a sale/udhaar call propose_sale;
-            to record a customer repayment call propose_payment — the shopkeeper confirms before it saves.
+            figures. Call the FEWEST tools needed (often just ONE). As soon as a tool result gives you
+            enough to answer, STOP calling tools and reply immediately — do not re-check, verify, or call
+            extra tools. To RECORD a sale/udhaar call propose_sale; to record a customer repayment call
+            propose_payment — the shopkeeper confirms before it saves.
             Keep replies to 1-3 short lines. Rupees as ₹.
         """.trimIndent()
     }

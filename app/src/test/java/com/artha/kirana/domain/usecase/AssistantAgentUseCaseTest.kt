@@ -41,7 +41,7 @@ class AssistantAgentUseCaseTest {
 
     @Test
     fun `final text immediately returns Reply`() = runTest {
-        coEvery { cloud.completeWithTools(any(), any()) } returns textTurn("आज ₹350 की बिक्री हुई।")
+        coEvery { cloud.completeWithTools(any(), any(), any()) } returns textTurn("आज ₹350 की बिक्री हुई।")
 
         val result = useCase.run(emptyList(), "आज कितना बिका?")
 
@@ -52,7 +52,7 @@ class AssistantAgentUseCaseTest {
     @Test
     fun `read tool then final text returns Reply and invokes tool`() = runTest {
         coEvery { shopTools.execute("get_pnl", any()) } returns """{"profit":170}"""
-        coEvery { cloud.completeWithTools(any(), any()) } returnsMany listOf(
+        coEvery { cloud.completeWithTools(any(), any(), any()) } returnsMany listOf(
             toolTurn("get_pnl", """{"period":"today"}"""),
             textTurn("आज का मुनाफा ₹170 है।"),
         )
@@ -67,7 +67,7 @@ class AssistantAgentUseCaseTest {
     @Test
     fun `propose_sale terminates loop and returns SaleDraft`() = runTest {
         val args = """{"entries":[{"item":"chawal","qty":"2 kg","amount":80,"type":"credit","party":"Ramesh"}]}"""
-        coEvery { cloud.completeWithTools(any(), any()) } returns toolTurn("propose_sale", args)
+        coEvery { cloud.completeWithTools(any(), any(), any()) } returns toolTurn("propose_sale", args)
 
         val result = useCase.run(emptyList(), "2 kg chawal 80 rupees udhaar Ramesh")
 
@@ -80,13 +80,13 @@ class AssistantAgentUseCaseTest {
         assertEquals("credit", draft.entries[0].type)
         assertEquals("Ramesh", draft.entries[0].party)
         // Must terminate after exactly one cloud call — no second round-trip
-        coVerify(exactly = 1) { cloud.completeWithTools(any(), any()) }
+        coVerify(exactly = 1) { cloud.completeWithTools(any(), any(), any()) }
     }
 
     @Test
     fun `propose_payment terminates loop and returns PaymentDraft`() = runTest {
         val args = """{"party":"Ramesh","amount":50}"""
-        coEvery { cloud.completeWithTools(any(), any()) } returns toolTurn("propose_payment", args)
+        coEvery { cloud.completeWithTools(any(), any(), any()) } returns toolTurn("propose_payment", args)
 
         val result = useCase.run(emptyList(), "Ramesh ne 50 diye")
 
@@ -94,6 +94,6 @@ class AssistantAgentUseCaseTest {
         val draft = result as AssistantResult.PaymentDraft
         assertEquals("Ramesh", draft.party)
         assertEquals(50.0, draft.amount!!, 0.001)
-        coVerify(exactly = 1) { cloud.completeWithTools(any(), any()) }
+        coVerify(exactly = 1) { cloud.completeWithTools(any(), any(), any()) }
     }
 }

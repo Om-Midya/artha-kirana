@@ -61,6 +61,7 @@ class CloudChatClient @Inject constructor(
     suspend fun completeWithTools(
         messages: List<com.artha.kirana.data.remote.dto.AgentMessage>,
         tools: kotlinx.serialization.json.JsonArray,
+        toolChoice: String = "auto",
     ): com.artha.kirana.data.remote.dto.AgentMessage {
         if (apiKey.isBlank()) throw LlmUnavailableException(null)
         val response = client.post("$BASE_URL/chat/completions") {
@@ -74,7 +75,7 @@ class CloudChatClient @Inject constructor(
                     model = model,
                     messages = messages,
                     tools = tools,
-                    toolChoice = "auto",
+                    toolChoice = toolChoice,
                 ),
             )
         }
