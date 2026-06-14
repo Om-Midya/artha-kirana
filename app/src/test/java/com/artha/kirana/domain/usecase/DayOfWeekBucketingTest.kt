@@ -32,5 +32,9 @@ class DayOfWeekBucketingTest {
         assertEquals(30.0, buckets[0], 0.001)   // index 0 = Sunday
         assertEquals(150.0, buckets[5], 0.001)  // index 5 = Friday
         assertEquals(0.0, buckets[1], 0.001)    // Monday empty
+        assertEquals(0.0, buckets[2], 0.001)    // Tuesday empty
+        assertEquals(0.0, buckets[3], 0.001)    // Wednesday empty
+        assertEquals(0.0, buckets[4], 0.001)    // Thursday empty
+        assertEquals(0.0, buckets[6], 0.001)    // Saturday empty (guards Friday off-by-one)
     }
 }

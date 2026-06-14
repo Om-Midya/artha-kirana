@@ -27,6 +27,7 @@ interface SalesDao {
     @Query("SELECT COALESCE(SUM(amount), 0) FROM sales WHERE type = 'cash' AND timestamp BETWEEN :start AND :end")
     fun cashBetween(start: Long, end: Long): Flow<Double>
 
+    /** All sales in the window, every type INCLUDING repayments — callers must filter if needed. */
     @Query("SELECT * FROM sales WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
     suspend fun between(start: Long, end: Long): List<SaleEntity>
 
@@ -45,6 +46,7 @@ interface SalesDao {
     )
     suspend fun topSellers(start: Long, end: Long): List<TopSellerRow>
 
+    /** Margin per item over a period; ASC so low-margin (often high-volume) items surface first. */
     @Query(
         "SELECT itemId, itemName, " +
             "COALESCE(SUM((unitPrice - unitCost) * qtySold),0) AS margin, " +
