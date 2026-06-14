@@ -18,9 +18,6 @@ interface KhataDao {
     @Query("SELECT * FROM khata ORDER BY balance DESC")
     fun observeAll(): Flow<List<KhataEntity>>
 
-    @Query("SELECT * FROM khata WHERE partyName = :name COLLATE NOCASE LIMIT 1")
-    suspend fun findByName(name: String): KhataEntity?
-
     @Query("SELECT * FROM khata WHERE id = :id")
     fun observeById(id: Long): Flow<KhataEntity?>
 
