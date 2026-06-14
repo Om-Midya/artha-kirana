@@ -31,7 +31,12 @@ interface SalesDao {
     @Query("SELECT * FROM sales WHERE timestamp BETWEEN :start AND :end ORDER BY timestamp DESC")
     suspend fun between(start: Long, end: Long): List<SaleEntity>
 
-    /** Cost of goods sold = sum of qty*costPrice for non-repayment sales joined to items. */
+    /**
+     * Cost of goods sold = sum of qtySold*costPrice for non-repayment sales joined to items.
+     * NOTE: reads LIVE items.costPrice (not the sales.unitCost snapshot), and excludes
+     * null-itemId (untracked) sales. The analytics itemMargins query uses snapshots instead —
+     * the two cost sources can diverge if catalog prices change. Kept as-is (P&L is device-verified).
+     */
     @Query(
         "SELECT COALESCE(SUM(s.qtySold * i.costPrice), 0) FROM sales s " +
             "JOIN items i ON s.itemId = i.id " +
@@ -39,6 +44,12 @@ interface SalesDao {
     )
     fun cogsBetween(start: Long, end: Long): Flow<Double>
 
+    /**
+     * Top sellers by revenue over a period (excludes repayments). Grouped by itemId, so all
+     * untracked (null-itemId) sales aggregate into a single row with a representative itemName.
+     * Grouping by itemId (not itemName) is intentional: itemName is the raw parsed string and
+     * can vary across sales of the same item.
+     */
     @Query(
         "SELECT itemId, itemName, COALESCE(SUM(qtySold),0) AS qty, COALESCE(SUM(amount),0) AS revenue " +
             "FROM sales WHERE type != 'repayment' AND timestamp BETWEEN :start AND :end " +
