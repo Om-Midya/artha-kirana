@@ -14,7 +14,9 @@ adb shell am start -n com.artha.kirana/.MainActivity
 
 ## State
 
-> ⚠️ **Active work is on branch `feat/assistant-layer`, NOT merged to `main`.** Two features built there this session (Assistant + editable recent entries + LLM preload), awaiting human on-device walkthroughs, then merge. `git checkout feat/assistant-layer` to continue.
+> ⚠️ **ACTIVE PIVOT (2026-06-14): cloud LLM primary + local fallback + cloud OCR.** The on-device llama-server (Qwen 3B) is too flaky for the demo (cold-prefill timeouts → false "server offline", sampling wobble, dies between sessions). Going **cloud-primary (OpenRouter → Claude Haiku 4.5), local llama-server as fallback, cloud-vision OCR for bills.** Reference = a colleague's working hybrid app at `~/Desktop/CrazyStuff/artha-kirana`. **Brief + design + open questions: `docs/superpowers/specs/2026-06-14-cloud-llm-ocr-direction.md`. New-agent prompt: `docs/NEW-AGENT-PROMPT-cloud-llm.md`. NOT started — next agent brainstorms → spec → plan → build.**
+>
+> **Current branch:** `feat/analytics-chat` (15 commits, UNMERGED) atop merged `main`. It has data-layer v3 (customers/snapshots/analytics use-cases) + the Assistant + edit + auto-price (all merged to main earlier this session) PLUS analytics-in-chat (3 intents → text bubbles) + a debug `DemoDataSeeder`. On-device verified at the data+intent layers (intent classifier 16/16 live; seeder + analytics queries correct). The cloud pivot can build on this branch (the cloud client is a swap UNDER the existing `chat()` chokepoint — orthogonal to these features).
 
 **On `main` (merged):**
 - ✅ **Phase 0/1/2 done & merged.** Sale loop (type Hindi → on-device parse → confirm → Room → reactive Home, §18 = 5/5). Inventory (add/edit/restock + low-stock highlight), Khata (party list/detail + record-payment), P&L (today/week/month tabs + Vico chart), low-stock `InventoryAlertWorker`. Final review clean; unit tests green.
@@ -25,7 +27,8 @@ adb shell am start -n com.artha.kirana/.MainActivity
 **On `feat/assistant-layer` (built this session, reviewed, unit tests green, installed on iQOO — awaiting human UI walkthrough before merge):**
 - 🟢 **Assistant layer (conversational tab).** Center protruding gold FAB tab → chat thread → **stateless two-stage intent router**: `IntentRouter.classify()` (enum `json_schema`, **10/10 live on-device**) → dispatch to existing use-cases. 3 intents: `log_sale` (reuses `ParseSaleEntryUseCase`), `record_payment` (`LlmEngine.parsePayment`), `query_pnl` (`PnlPeriodDetector` + `GetPnlSummaryUseCase`). Inline confirm cards reuse `EditableEntryCard`; mutations write via `LogSaleUseCase`/`applyRepayment` only on Confirm. Voice input reuses the whisper mic; replies text-only. LLM is **preloaded on screen open** (`warmUpLlm` primes the intent prefix cache). Spec/plan: `docs/superpowers/{specs,plans}/2026-06-14-artha-assistant*`.
 - 🟢 **Editable "Recent entries" (Home).** Tap a recent sale → bottom sheet (reuses `EditableEntryCard`) → `EditSaleUseCase` reverses the old sale's inventory+khata effects and applies the edited ones (clean khata rewrite via `KhataRepository.reverseSaleEffect`), edit-in-place (same id/timestamp). Spec/plan: `…2026-06-14-artha-edit-recent-entries*`.
-- 🔜 **NEXT (handed off, not started): data-layer restructure** — auto-price from inventory `sellPrice`, tighter linking/FKs, analytics-friendly schema, "customer/shop profile" question. Brief + open questions: **`docs/superpowers/specs/2026-06-14-data-layer-direction.md`**. Start there.
+- ✅ **DONE since (all this session): data-layer v3** (auto-price, customers FK, price snapshots, 4 analytics use-cases — merged to `main`), **analytics-in-chat + seeder** (on `feat/analytics-chat`). 
+- 🔜 **NEXT (handed off, not started): cloud LLM primary + local fallback + cloud OCR.** Brief: **`docs/superpowers/specs/2026-06-14-cloud-llm-ocr-direction.md`**. New-agent prompt: **`docs/NEW-AGENT-PROMPT-cloud-llm.md`**. Reference impl: `~/Desktop/CrazyStuff/artha-kirana` (OpenRouter + Claude Haiku, decorator fallback chain, cloud-vision OCR). Start by reading the brief, then brainstorm the open questions.
 
 ## Architecture (one paragraph)
 

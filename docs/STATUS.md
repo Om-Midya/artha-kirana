@@ -1,6 +1,10 @@
 # Artha Kirana — Status
 
-**Updated:** 2026-06-14 · **Branch:** `main` — Assistant + edit + auto-price + **data-layer v3 all merged** · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+**Updated:** 2026-06-14 · **Branch:** `feat/analytics-chat` (analytics-in-chat + seeder, 15 commits, unmerged) atop merged `main` (Phase 0–2 + data-layer v3 + Assistant + edit + auto-price) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+
+## ⚠️ ACTIVE PIVOT (2026-06-14): cloud LLM primary + local fallback + cloud OCR
+
+The on-device llama-server (Qwen 3B) is too flaky for the demo (cold-prefill timeouts → false "server offline", sampling wobble, dies between sessions). **Decision: cloud LLM (OpenRouter → Claude Haiku 4.5) as PRIMARY parser, local llama-server as FALLBACK, plus cloud-vision OCR for bills.** This is a deliberate demo-driven reversal of the "nothing leaves the phone" pitch (local fallback preserves an offline story). Reference = a colleague's working hybrid app at `~/Desktop/CrazyStuff/artha-kirana`. **Direction brief + open questions + integration design: `docs/superpowers/specs/2026-06-14-cloud-llm-ocr-direction.md`.** Next agent: brainstorm → spec → plan → build (NOT yet started). New-agent prompt: `docs/NEW-AGENT-PROMPT-cloud-llm.md`.
 
 ## Progress
 
@@ -27,6 +31,10 @@ Brainstormed → spec → plan → executing (subagent-driven). **Spec:** `docs/
 - **Known follow-ups (non-blocking):** Devanagari sort under `COLLATE NOCASE` is codepoint-ordered (post-hackathon: locale collator); `CustomerSummary` has no `customerName` (add when a customer-list screen needs it); `CustomerRepository`/`KhataRepository` return entities directly (matches project convention).
 
 Original direction brief (superseded): `docs/superpowers/specs/2026-06-14-data-layer-direction.md`. Design spec: `docs/superpowers/specs/2026-06-14-data-layer-restructure-design.md`. Plan: `docs/superpowers/plans/2026-06-14-data-layer-restructure.md`.
+
+## Analytics-in-chat + demo seeder (on `feat/analytics-chat`, 15 commits, UNMERGED)
+
+🟢 **Built & on-device-verified (data+intent layers).** 3 analytics intents wired into the Assistant (`query_top_sellers` / `query_customer` / `query_day_trend`; margins stays verify-only) rendered as Hindi text bubbles via `AnalyticsChatFormatter`; cloud-free Room queries via the 4 analytics use-cases. Debug-only `DemoDataSeeder` (~28 dated sales / 5 items / 4 customers / khata / purchases). **Live intent classifier 16/16 on the 3B**; seeder data + all 4 analytics queries verified correct on-device. Two bugs fixed this session: ranking queries now default THIS_MONTH not TODAY (`0c4ccff`); SALE prompt warmed on Assistant open to stop the cold-prefill false-"offline" (`a2cc6f4`). Spec/plan: `docs/superpowers/{specs,plans}/2026-06-14-analytics-chat-seeder*`. **Awaiting:** final visual chat-bubble eyeball + merge decision (now likely folded into the cloud pivot).
 
 ## What works (verified on the iQOO)
 
