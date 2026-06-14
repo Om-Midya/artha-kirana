@@ -13,6 +13,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.JsonElement
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,11 +30,13 @@ class LlmUnavailableException(cause: Throwable? = null) :
 @Singleton
 class LlmHttpClient @Inject constructor(
     private val client: HttpClient,
-) {
+) : ChatClient {
     private val baseUrl: String = BuildConfig.LLM_BASE_URL
 
+    override val engine = MutableStateFlow(LlmEngineKind.ON_DEVICE).asStateFlow()
+
     /** True when the server answers /health with 2xx. Used for graceful degradation. */
-    suspend fun health(): Boolean = try {
+    override suspend fun health(): Boolean = try {
         client.get("$baseUrl/health").status.isSuccess()
     } catch (t: Throwable) {
         false
@@ -43,7 +47,7 @@ class LlmHttpClient @Inject constructor(
      * Retries a few times — llama-server occasionally returns a transient 500 under load, and a
      * stateless completion is safe to retry; this keeps voice/typed parsing from bouncing to manual.
      */
-    suspend fun chat(system: String, user: String, responseFormat: JsonElement? = null): String {
+    override suspend fun chat(system: String, user: String, responseFormat: JsonElement?): String {
         var lastError: Throwable? = null
         repeat(MAX_ATTEMPTS) { attempt ->
             try {
