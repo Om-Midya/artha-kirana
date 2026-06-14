@@ -39,5 +39,6 @@ class AnalyticsChatFormatterTest {
         val text = AnalyticsChatFormatter.dayTrend(PnlPeriod.THIS_MONTH, buckets)
         assertTrue(text.contains("शुक्र"))
         assertTrue(text.contains("300"))
+        assertTrue(text.contains("शुक्र: ₹300 ⭐"))
     }
 }

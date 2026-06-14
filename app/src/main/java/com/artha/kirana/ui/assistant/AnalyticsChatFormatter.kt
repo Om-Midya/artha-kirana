@@ -3,6 +3,7 @@ package com.artha.kirana.ui.assistant
 import com.artha.kirana.domain.model.CustomerSummary
 import com.artha.kirana.domain.model.PnlPeriod
 import com.artha.kirana.domain.model.TopSellerRow
+import kotlin.math.roundToLong
 
 /** Formats read-only analytics results into Hindi/Hinglish chat-bubble text. Pure + testable. */
 object AnalyticsChatFormatter {
@@ -15,7 +16,7 @@ object AnalyticsChatFormatter {
 
     private val weekdays = listOf("रवि", "सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि")
 
-    private fun rupees(v: Double): String = "₹${v.toLong()}"
+    private fun rupees(v: Double): String = "₹${v.roundToLong()}"
 
     fun topSellers(period: PnlPeriod, rows: List<TopSellerRow>): String {
         if (rows.isEmpty()) return "${periodLabel(period)} की कोई बिक्री नहीं मिली।"
@@ -30,9 +31,9 @@ object AnalyticsChatFormatter {
 
     fun dayTrend(period: PnlPeriod, buckets: DoubleArray): String {
         if (buckets.all { it == 0.0 }) return "${periodLabel(period)} का कोई डेटा नहीं।"
-        val maxIdx = buckets.indices.maxByOrNull { buckets[it] } ?: 0
+        val maxVal = buckets.max()
         val lines = buckets.indices.map { i ->
-            val mark = if (i == maxIdx) " ⭐" else ""
+            val mark = if (buckets[i] == maxVal) " ⭐" else ""
             "${weekdays[i]}: ${rupees(buckets[i])}$mark"
         }
         return "📅 ${periodLabel(period)} (दिन के हिसाब से):\n" + lines.joinToString("\n")
