@@ -47,13 +47,13 @@ class RouteAssistantUseCase @Inject constructor(
                 AssistantResult.PnlAnswer(getPnl(PnlPeriodDetector.detect(text)).first())
 
             AssistantIntent.QUERY_TOP_SELLERS -> {
-                val period = PnlPeriodDetector.detect(text)
-                AssistantResult.TopSellersAnswer(period, getTopSellers(period.startFrom(System.currentTimeMillis()), Long.MAX_VALUE))
+                val (period, start) = periodWindow(text)
+                AssistantResult.TopSellersAnswer(period, getTopSellers(start, Long.MAX_VALUE))
             }
 
             AssistantIntent.QUERY_DAY_TREND -> {
-                val period = PnlPeriodDetector.detect(text)
-                AssistantResult.DayTrendAnswer(period, getDayTrend(period.startFrom(System.currentTimeMillis()), Long.MAX_VALUE))
+                val (period, start) = periodWindow(text)
+                AssistantResult.DayTrendAnswer(period, getDayTrend(start, Long.MAX_VALUE))
             }
 
             AssistantIntent.QUERY_CUSTOMER -> engine.extractCustomerName(text).fold(
@@ -68,6 +68,12 @@ class RouteAssistantUseCase @Inject constructor(
 
             AssistantIntent.UNKNOWN -> AssistantResult.Reply(COULD_NOT_UNDERSTAND)
         }
+    }
+
+    /** Detected period + its window-start timestamp (end is always Long.MAX_VALUE). */
+    private fun periodWindow(text: String): Pair<com.artha.kirana.domain.model.PnlPeriod, Long> {
+        val period = PnlPeriodDetector.detect(text)
+        return period to period.startFrom(System.currentTimeMillis())
     }
 
     /** Preload the on-device LLM (intent prefix cache) so the first message is fast. Safe if offline. */

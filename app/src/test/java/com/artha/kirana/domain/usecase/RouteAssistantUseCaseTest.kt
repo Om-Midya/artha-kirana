@@ -114,8 +114,8 @@ class RouteAssistantUseCaseTest {
     @Test
     fun customerIntentResolvesNameToSummary() = runTest {
         coEvery { intentRouter.classify(any()) } returns Result.success(AssistantIntent.QUERY_CUSTOMER)
-        coEvery { engine.extractCustomerName(any()) } returns Result.success("Ramesh")
-        coEvery { customers.findByName("Ramesh") } returns CustomerEntity(id = 3, name = "Ramesh")
+        coEvery { engine.extractCustomerName(any()) } returns Result.success("ramesh")   // LLM may differ in casing
+        coEvery { customers.findByName("ramesh") } returns CustomerEntity(id = 3, name = "Ramesh") // canonical
         coEvery { getCustomerSummary(3L) } returns CustomerSummary(3L, 500.0, 120.0)
 
         val result = useCase("रमेश का हिसाब")
