@@ -41,7 +41,8 @@ class RouteAssistantUseCase @Inject constructor(
             AssistantIntent.QUERY_PNL ->
                 AssistantResult.PnlAnswer(getPnl(PnlPeriodDetector.detect(text)).first())
 
-            AssistantIntent.UNKNOWN -> AssistantResult.Reply(COULD_NOT_UNDERSTAND)
+            // QUERY_TOP_SELLERS / QUERY_CUSTOMER / QUERY_DAY_TREND are routed in a later task.
+            else -> AssistantResult.Reply(COULD_NOT_UNDERSTAND)
         }
     }
 

@@ -33,4 +33,11 @@ class IntentRouterTest {
     fun garbageFallsBackToUnknown() {
         assertEquals(AssistantIntent.UNKNOWN, router.parseIntent("not json at all"))
     }
+
+    @Test
+    fun parsesNewAnalyticsIntents() {
+        assertEquals(AssistantIntent.QUERY_TOP_SELLERS, router.parseIntent("""{"intent":"query_top_sellers"}"""))
+        assertEquals(AssistantIntent.QUERY_CUSTOMER, router.parseIntent("""{"intent":"query_customer"}"""))
+        assertEquals(AssistantIntent.QUERY_DAY_TREND, router.parseIntent("""{"intent":"query_day_trend"}"""))
+    }
 }

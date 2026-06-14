@@ -51,6 +51,9 @@ class IntentRouter @Inject constructor(
                 "log_sale" -> AssistantIntent.LOG_SALE
                 "record_payment" -> AssistantIntent.RECORD_PAYMENT
                 "query_pnl" -> AssistantIntent.QUERY_PNL
+                "query_top_sellers" -> AssistantIntent.QUERY_TOP_SELLERS
+                "query_customer" -> AssistantIntent.QUERY_CUSTOMER
+                "query_day_trend" -> AssistantIntent.QUERY_DAY_TREND
                 else -> AssistantIntent.UNKNOWN
             }
         } catch (t: Throwable) {
@@ -60,13 +63,16 @@ class IntentRouter @Inject constructor(
 
     companion object {
         const val INTENT_SYSTEM_PROMPT = """You are a router for a kirana shop assistant. Read the shopkeeper's message (Hindi/Hinglish) and output ONLY which action it wants, as JSON.
-Return ONLY: {"intent": one of "log_sale" | "record_payment" | "query_pnl" | "unknown"}
+Return ONLY: {"intent": one of "log_sale" | "record_payment" | "query_pnl" | "query_top_sellers" | "query_customer" | "query_day_trend" | "unknown"}
 No explanation. No markdown. Just the raw JSON object.
 
 Meaning:
 - log_sale = recording a sale/purchase of goods (items + quantity, cash or उधार/credit). e.g. selling rice, sugar, soap.
 - record_payment = a customer PAID BACK money they owed (दिए / चुकाए / चुका दिया / जमा / paid). No goods involved.
-- query_pnl = asking about earnings/profit/sales totals (कमाई, मुनाफा, बिक्री, कितना कमाया; today/week/month).
+- query_pnl = asking about TOTAL earnings/profit/sales over a period (कमाई, मुनाफा, बिक्री, कितना कमाया; today/week/month).
+- query_top_sellers = asking WHICH ITEMS sell the most (सबसे ज्यादा क्या बिका, बेस्ट सेलर, टॉप आइटम, कौन सा सामान ज्यादा बिकता है). A per-item ranking, NOT a total.
+- query_customer = asking about ONE customer's account: how much they owe, their total, their history (रमेश का हिसाब, प्रिया कितना बकाया है, सुरेश ने कुल कितना लिया). Names a person.
+- query_day_trend = asking WHICH DAY/weekday is busiest or sells most (कौन सा दिन सबसे busy, किस दिन सबसे ज्यादा बिक्री, सबसे अच्छा दिन).
 - unknown = anything else.
 
 Examples:
@@ -82,6 +88,18 @@ Input: आज की कमाई कितनी हुई
 {"intent":"query_pnl"}
 Input: इस हफ्ते का मुनाफा बताओ
 {"intent":"query_pnl"}
+Input: सबसे ज्यादा क्या बिका
+{"intent":"query_top_sellers"}
+Input: इस महीने के टॉप आइटम कौन से हैं
+{"intent":"query_top_sellers"}
+Input: रमेश का हिसाब बताओ
+{"intent":"query_customer"}
+Input: प्रिया कितना बकाया है
+{"intent":"query_customer"}
+Input: कौन सा दिन सबसे busy रहता है
+{"intent":"query_day_trend"}
+Input: किस दिन सबसे ज्यादा बिक्री होती है
+{"intent":"query_day_trend"}
 Input: नमस्ते
 {"intent":"unknown"}"""
 
@@ -94,7 +112,9 @@ Input: नमस्ते
                     putJsonObject("properties") {
                         putJsonObject("intent") {
                             putJsonArray("enum") {
-                                add("log_sale"); add("record_payment"); add("query_pnl"); add("unknown")
+                                add("log_sale"); add("record_payment"); add("query_pnl")
+                                add("query_top_sellers"); add("query_customer"); add("query_day_trend")
+                                add("unknown")
                             }
                         }
                     }
