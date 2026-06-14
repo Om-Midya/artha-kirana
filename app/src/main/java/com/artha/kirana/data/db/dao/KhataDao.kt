@@ -29,4 +29,7 @@ interface KhataDao {
 
     @Query("SELECT COALESCE(SUM(balance), 0) FROM khata WHERE balance > 0")
     fun totalOutstanding(): Flow<Double>
+
+    @Query("SELECT COALESCE(balance, 0) FROM khata WHERE customerId = :customerId")
+    suspend fun balanceForCustomer(customerId: Long): Double
 }

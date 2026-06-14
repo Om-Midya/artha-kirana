@@ -14,4 +14,6 @@ interface SalesRepository {
     fun cogsBetween(start: Long, end: Long): Flow<Double>
     suspend fun topSellers(start: Long, end: Long): List<TopSellerRow>
     suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow>
+    fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>>
+    suspend fun lifetimeValue(customerId: Long): Double
 }

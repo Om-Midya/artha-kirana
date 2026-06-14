@@ -37,6 +37,9 @@ class KhataRepositoryImpl @Inject constructor(
         txnDao.deleteBySaleId(saleId)
     }
 
+    override suspend fun balanceForCustomer(customerId: Long): Double =
+        khataDao.balanceForCustomer(customerId)
+
     private suspend fun adjust(party: String, delta: Double, type: String, saleId: Long?, amount: Double) {
         val customerId = customers.resolveOrCreate(party)
         val existing = khataDao.findByCustomerId(customerId)

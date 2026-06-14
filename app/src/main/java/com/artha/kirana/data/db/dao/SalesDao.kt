@@ -54,4 +54,10 @@ interface SalesDao {
             "GROUP BY itemId ORDER BY margin ASC",
     )
     suspend fun itemMargins(start: Long, end: Long): List<ItemMarginRow>
+
+    @Query("SELECT * FROM sales WHERE customerId = :customerId ORDER BY timestamp DESC")
+    fun observeForCustomer(customerId: Long): Flow<List<SaleEntity>>
+
+    @Query("SELECT COALESCE(SUM(amount),0) FROM sales WHERE customerId = :customerId AND type != 'repayment'")
+    suspend fun lifetimeValue(customerId: Long): Double
 }

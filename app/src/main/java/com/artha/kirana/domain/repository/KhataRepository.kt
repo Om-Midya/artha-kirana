@@ -19,4 +19,7 @@ interface KhataRepository {
 
     /** Remove the khata transaction(s) created by [saleId] and undo their balance impact. */
     suspend fun reverseSaleEffect(saleId: Long)
+
+    /** Current khata balance for [customerId] (positive = owes us; 0 if no khata row). */
+    suspend fun balanceForCustomer(customerId: Long): Double
 }
