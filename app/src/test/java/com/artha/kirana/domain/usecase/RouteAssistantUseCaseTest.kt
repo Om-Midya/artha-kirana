@@ -5,6 +5,7 @@ import com.artha.kirana.data.llm.IntentRouter
 import com.artha.kirana.data.llm.LlmEngine
 import com.artha.kirana.data.llm.ParsedPayment
 import com.artha.kirana.data.remote.LlmUnavailableException
+import com.artha.kirana.domain.usecase.AssistantAgentUseCase
 import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.domain.model.AssistantResult
 import com.artha.kirana.domain.model.CustomerSummary
@@ -24,6 +25,7 @@ import org.junit.Test
 
 class RouteAssistantUseCaseTest {
 
+    private val agent = mockk<AssistantAgentUseCase>()
     private val intentRouter = mockk<IntentRouter>()
     private val parseSale = mockk<ParseSaleEntryUseCase>()
     private val engine = mockk<LlmEngine>()
@@ -33,9 +35,15 @@ class RouteAssistantUseCaseTest {
     private val getDayTrend = mockk<GetDayOfWeekTrendUseCase>(relaxed = true)
     private val customers = mockk<CustomerRepository>(relaxed = true)
     private val useCase = RouteAssistantUseCase(
-        intentRouter, parseSale, engine, getPnl,
+        agent, intentRouter, parseSale, engine, getPnl,
         getTopSellers, getCustomerSummary, getDayTrend, customers,
     )
+
+    init {
+        // All existing tests exercise the on-device fallback path: make the cloud agent
+        // unavailable so RouteAssistantUseCase falls through to classifyFallback().
+        coEvery { agent.run(any(), any()) } throws LlmUnavailableException(null)
+    }
 
     private val summary = PnlSummary(0.0, 0.0, 0.0, 0.0, 0.0, PnlPeriod.TODAY)
 

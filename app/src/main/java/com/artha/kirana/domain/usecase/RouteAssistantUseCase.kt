@@ -1,7 +1,10 @@
 package com.artha.kirana.domain.usecase
 
+import com.artha.kirana.BuildConfig
 import com.artha.kirana.data.llm.IntentRouter
 import com.artha.kirana.data.llm.LlmEngine
+import com.artha.kirana.data.remote.LlmUnavailableException
+import com.artha.kirana.data.remote.dto.AgentMessage
 import com.artha.kirana.domain.model.AssistantIntent
 import com.artha.kirana.domain.model.AssistantResult
 import com.artha.kirana.domain.repository.CustomerRepository
@@ -12,11 +15,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Stateless per-message router: classify the utterance, then dispatch to the matching
- * extractor (sale/payment) or read-only query (P&L). Returns an [AssistantResult] the UI
- * renders as a chat message. Reuses ParseSaleEntryUseCase, LlmEngine, GetPnlSummaryUseCase.
+ * Stateless per-message router. PRIMARY path: cloud agentic assistant ([AssistantAgentUseCase]).
+ * FALLBACK path: on-device intent classifier (IntentRouter + LlmEngine) when the cloud is
+ * unavailable or [BuildConfig.FORCE_LOCAL_LLM] is true. Returns an [AssistantResult] the UI
+ * renders as a chat message.
  */
 class RouteAssistantUseCase @Inject constructor(
+    private val agent: AssistantAgentUseCase,
     private val intentRouter: IntentRouter,
     private val parseSale: ParseSaleEntryUseCase,
     private val engine: LlmEngine,
@@ -26,7 +31,23 @@ class RouteAssistantUseCase @Inject constructor(
     private val getDayTrend: GetDayOfWeekTrendUseCase,
     private val customers: CustomerRepository,
 ) {
-    suspend operator fun invoke(text: String): AssistantResult {
+    /**
+     * Route a single user message. [history] = prior turns (up to ~6) for follow-up context.
+     * Callers that omit [history] still compile because it defaults to an empty list.
+     */
+    suspend operator fun invoke(text: String, history: List<AgentMessage> = emptyList()): AssistantResult {
+        if (!BuildConfig.FORCE_LOCAL_LLM) {
+            try {
+                return agent.run(history, text)
+            } catch (e: LlmUnavailableException) {
+                // Cloud down — fall through to on-device intent classifier.
+            }
+        }
+        return classifyFallback(text)
+    }
+
+    /** On-device fallback: classify intent then dispatch to extractor / query. */
+    private suspend fun classifyFallback(text: String): AssistantResult {
         val intent = intentRouter.classify(text).getOrElse { return AssistantResult.Unavailable }
         return when (intent) {
             AssistantIntent.LOG_SALE -> parseSale(text).fold(

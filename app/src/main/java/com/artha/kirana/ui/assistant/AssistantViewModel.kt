@@ -2,6 +2,7 @@ package com.artha.kirana.ui.assistant
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.artha.kirana.data.remote.dto.AgentMessage
 import com.artha.kirana.data.voice.AudioRecorder
 import com.artha.kirana.data.voice.WhisperEngine
 import com.artha.kirana.domain.model.AssistantResult
@@ -51,14 +52,29 @@ class AssistantViewModel @Inject constructor(
     fun send(text: String) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
+        val history = recentHistory()
         append(ChatMessage.User(ids.incrementAndGet(), trimmed))
         _routing.value = true
         viewModelScope.launch {
-            val result = route(trimmed)
+            val result = route(trimmed, history)
             _routing.value = false
             append(result.toMessage(ids.incrementAndGet()))
         }
     }
+
+    /**
+     * Snapshots the last 6 messages as [AgentMessage] for follow-up context.
+     * Only plain user-text and assistant-reply bubbles are mapped; draft/card bubbles are skipped
+     * because they carry structured data (entries, summary) that the cloud model doesn't need.
+     */
+    private fun recentHistory(): List<AgentMessage> =
+        _messages.value.takeLast(6).mapNotNull { m ->
+            when (m) {
+                is ChatMessage.User -> AgentMessage(role = "user", content = m.text)
+                is ChatMessage.Reply -> AgentMessage(role = "assistant", content = m.text)
+                else -> null   // skip SaleDraft, PaymentDraft, PnlAnswer
+            }
+        }
 
     fun confirmSale(messageId: Long, entries: List<SaleEntry>) {
         viewModelScope.launch {
