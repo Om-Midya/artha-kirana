@@ -4,7 +4,6 @@ import com.artha.kirana.domain.model.PnlPeriod
 import com.artha.kirana.domain.model.PnlSummary
 import com.artha.kirana.domain.repository.KhataRepository
 import com.artha.kirana.domain.repository.SalesRepository
-import com.artha.kirana.util.TimeRange
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
@@ -18,11 +17,7 @@ class GetPnlSummaryUseCase @Inject constructor(
         period: PnlPeriod,
         now: Long = System.currentTimeMillis(),
     ): Flow<PnlSummary> {
-        val start = when (period) {
-            PnlPeriod.TODAY -> TimeRange.startOfToday(now)
-            PnlPeriod.THIS_WEEK -> TimeRange.startOfWeek(now)
-            PnlPeriod.THIS_MONTH -> TimeRange.startOfMonth(now)
-        }
+        val start = period.startFrom(now)
         val end = Long.MAX_VALUE
         return combine(
             sales.revenueBetween(start, end),
