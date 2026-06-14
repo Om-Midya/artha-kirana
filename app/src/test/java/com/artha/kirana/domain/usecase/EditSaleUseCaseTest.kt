@@ -94,4 +94,19 @@ class EditSaleUseCaseTest {
         coVerify(exactly = 0) { inventory.decrementStock(any(), any()) }
         coVerify(exactly = 1) { sales.updateSale(match { it.itemName == "mystery" && it.itemId == null }) }
     }
+
+    @Test
+    fun editToZeroPricedItemSnapshotsNullNotZero() = runTest {
+        val item = ItemEntity(id = 4, name = "mystery", qtyInStock = 5.0, sellPrice = 0.0, costPrice = 0.0)
+        coEvery { inventory.findByName("mystery") } returns item
+        val old = SaleEntity(
+            id = 2, itemId = null, itemName = null, qtySold = 0.0, amount = 10.0,
+            type = "cash", party = null, inputMethod = "typed", rawInput = null, timestamp = 0L,
+        )
+        val edited = SaleEntry(item = "mystery", qty = "1", amount = 10.0, type = "cash", party = null)
+
+        useCase(old, edited)
+
+        coVerify(exactly = 1) { sales.updateSale(match { it.unitPrice == null && it.unitCost == null }) }
+    }
 }

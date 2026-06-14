@@ -71,4 +71,16 @@ class LogSaleUseCaseTest {
 
         coVerify(exactly = 1) { khata.applyRepayment("Ramesh", 50.0, 9L) }
     }
+
+    @Test
+    fun itemWithZeroPriceSnapshotsNullNotZero() = runTest {
+        val item = ItemEntity(id = 3, name = "mystery", qtyInStock = 5.0, sellPrice = 0.0, costPrice = 0.0)
+        coEvery { inventory.findByName("mystery") } returns item
+        coEvery { sales.logSale(any()) } returns 1L
+
+        val entry = SaleEntry(item = "mystery", qty = "1", amount = 10.0, type = "cash", party = null)
+        useCase(entry, inputMethod = "typed", rawInput = null)
+
+        coVerify(exactly = 1) { sales.logSale(match { it.unitPrice == null && it.unitCost == null }) }
+    }
 }
