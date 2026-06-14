@@ -1,6 +1,6 @@
 # Artha Kirana — Status
 
-**Updated:** 2026-06-14 · **Branch:** `main` (Phase 0–2 merged); Assistant slice on `feat/assistant-layer` · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+**Updated:** 2026-06-14 · **Branch:** Assistant+edit+auto-price merged to `main`; data-layer v3 on `feat/data-layer-v3` · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
 
 ## Progress
 
@@ -20,10 +20,13 @@
 
 Brainstormed → spec → plan → executing (subagent-driven). **Spec:** `docs/superpowers/specs/2026-06-14-data-layer-restructure-design.md`. **Plan:** `docs/superpowers/plans/2026-06-14-data-layer-restructure.md` (16 tasks, 3 parts). Resolved decisions: "user profiles" = **customers** (new `customers` table + FK; not shop/settings); snapshot **unitPrice + unitCost** on sales; auto-price fills only when amount null + sellPrice>0; analytics = top-sellers / per-customer / margin / day-of-week; DB v2→v3 `fallbackToDestructiveMigration`.
 
-- **Part 1 — Auto-price (Feature A): 🟢 CODE COMPLETE on `feat/assistant-layer`, awaiting on-device check.** When the LLM returns item+qty but no amount, `ParseSaleEntryUseCase` now computes `amount = sellPrice × qty` from inventory (pure `computeAutoPrice`, injects `InventoryRepository`) before the confirm card — covers BOTH Sale Entry and the Assistant `log_sale` path. Commits `c431a1e`, `5a53d84`, `a4699bb`. Spec + code-quality reviews passed; full unit suite + `assembleDebug` green. **Task 3 (manual, owner):** on-device — "दो किलो चावल" (no price) shows ₹80 on the confirm card via Sale Entry AND Assistant; §18 still 5/5.
-- **Part 2 — DB v3 (customers/FKs/snapshots) + Part 3 — analytics: ⬜ GATED.** Branch off `main`; requires merging `feat/assistant-layer` → `main` first (which itself awaits the Assistant + edit-recent-entries on-device walkthroughs below).
+- **Part 1 — Auto-price (Feature A): 🟢 DONE, merged to `main`.** When the LLM returns item+qty but no amount, `ParseSaleEntryUseCase` computes `amount = sellPrice × qty` from inventory (pure `computeAutoPrice`, injects `InventoryRepository`) before the confirm card — covers BOTH Sale Entry and the Assistant `log_sale` path. Commits `c431a1e`/`5a53d84`/`a4699bb`. **Task 3 (manual, owner, still pending):** on-device — "दो किलो चावल" (no price) shows ₹80 on the confirm card via Sale Entry AND Assistant; §18 still 5/5.
+- **Part 2 — DB v3 (customers / FKs / price snapshots): 🟢 CODE COMPLETE on `feat/data-layer-v3`.** New `customers` table (id, name unique COLLATE NOCASE, nameHi?, phone?) as the identity hub; `CustomerRepository.resolveOrCreate(name)` idempotent name→id (used by LogSale/EditSale/Khata). `sales` gains `customerId` FK (SET_NULL) + `unitPrice`/`unitCost` snapshots (null when item unknown OR price ≤ 0) + indices (timestamp/itemId/customerId). `khata` gains `customerId` FK (CASCADE, unique — one ledger row per customer); `KhataRepositoryImpl.adjust` now resolves the customer and is keyed by `customerId` (public name-based API unchanged, so KhataScreen/Assistant untouched). Room v2→v3 `fallbackToDestructiveMigration` (wipes dev data). Dead `KhataDao.findByName` removed.
+- **Part 3 — analytics: 🟢 CODE COMPLETE on `feat/data-layer-v3`.** DAO @Query + thin use-cases (building blocks; UI surfacing is a follow-up): `GetTopSellersUseCase` (revenue DESC), `GetItemMarginsUseCase` (uses snapshots, margin ASC to surface low-margin), `GetCustomerSummaryUseCase` (lifetime value + outstanding), `GetDayOfWeekTrendUseCase` (pure `bucketRevenueByWeekday`, Sun=index 0, repayments excluded). LLM stays parse-only — these are ordinary Room queries.
+- **Review/verify:** 13 commits (`151b5e8`…`1329eb6`), each spec + code-quality reviewed (subagent-driven); full unit suite **72 green**; `assembleDebug` clean. **GATED on owner:** (a) on-device re-verify of the full sale/credit/repayment/edit + Assistant flows after the destructive v3 migration (data wiped — re-enter); (b) then merge `feat/data-layer-v3` → `main`.
+- **Known follow-ups (non-blocking):** Devanagari sort under `COLLATE NOCASE` is codepoint-ordered (post-hackathon: locale collator); `CustomerSummary` has no `customerName` (add when a customer-list screen needs it); `CustomerRepository`/`KhataRepository` return entities directly (matches project convention).
 
-Original direction brief (now superseded by the spec above): `docs/superpowers/specs/2026-06-14-data-layer-direction.md`.
+Original direction brief (superseded): `docs/superpowers/specs/2026-06-14-data-layer-direction.md`. Design spec: `docs/superpowers/specs/2026-06-14-data-layer-restructure-design.md`. Plan: `docs/superpowers/plans/2026-06-14-data-layer-restructure.md`.
 
 ## What works (verified on the iQOO)
 

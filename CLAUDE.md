@@ -181,7 +181,7 @@ com.artha.kirana/
 │
 ├── data/
 │   ├── db/
-│   │   ├── ArthaDatabase.kt     # Room DB (version 2; itemName denormalized on sales)
+│   │   ├── ArthaDatabase.kt     # Room DB (version 3; customers table; sales/khata customerId FKs; price snapshots)
 │   │   ├── dao/
 │   │   │   ├── SalesDao.kt
 │   │   │   ├── ItemsDao.kt
@@ -281,8 +281,22 @@ com.artha.kirana/
 
 ## 4. Database Schema (Room Entities)
 
-NOTE: Current DB is **version 2** — `itemName` is denormalized onto sales;
-`fallbackToDestructiveMigration` is enabled for hackathon speed.
+NOTE: Current DB is **version 3** — `itemName` denormalized onto sales; **customers are
+first-class** (`customers` table; `sales.customerId` + `khata.customerId` FKs); sales snapshot
+`unitPrice`/`unitCost` per line for drift-free margins; indices on `sales` timestamp/itemId/customerId.
+`fallbackToDestructiveMigration` is enabled for hackathon speed (a schema bump WIPES dev data).
+
+### CustomerEntity (DB v3 — identity hub)
+```kotlin
+@Entity(tableName = "customers", indices = [Index(value = ["name"], unique = true)])
+data class CustomerEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,                  // looked up COLLATE NOCASE via CustomerRepository.resolveOrCreate
+    val nameHi: String? = null,
+    val phone: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+```
 
 ### ItemEntity
 ```kotlin
@@ -301,17 +315,27 @@ data class ItemEntity(
 )
 ```
 
-### SaleEntity
+### SaleEntity (DB v3)
 ```kotlin
-@Entity(tableName = "sales")
+@Entity(
+    tableName = "sales",
+    foreignKeys = [
+        ForeignKey(entity = ItemEntity::class, parentColumns = ["id"], childColumns = ["itemId"], onDelete = ForeignKey.SET_NULL),
+        ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.SET_NULL)
+    ],
+    indices = [Index("timestamp"), Index("itemId"), Index("customerId")]
+)
 data class SaleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val itemId: Long? = null,          // null for pure khata/repayment entries
-    val itemName: String? = null,      // denormalized (DB v2)
+    val itemName: String? = null,      // denormalized (display)
+    val customerId: Long? = null,      // FK→customers; null for anonymous cash sales (DB v3)
     val qtySold: Double = 0.0,
     val amount: Double,
+    val unitPrice: Double? = null,     // snapshot of items.sellPrice at sale time; null if unknown/≤0 (DB v3)
+    val unitCost: Double? = null,      // snapshot of items.costPrice at sale time; null if unknown/≤0 (DB v3)
     val type: String,                  // "cash" | "credit" | "repayment"
-    val party: String? = null,
+    val party: String? = null,         // denormalized customer name (display + fallback)
     val inputMethod: String,           // "voice" | "scan" | "typed"
     val rawInput: String? = null,
     val timestamp: Long = System.currentTimeMillis()
@@ -332,16 +356,24 @@ data class PurchaseEntity(
 )
 ```
 
-### KhataEntity
+### KhataEntity (DB v3)
 ```kotlin
-@Entity(tableName = "khata")
+@Entity(
+    tableName = "khata",
+    foreignKeys = [ForeignKey(entity = CustomerEntity::class, parentColumns = ["id"], childColumns = ["customerId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index(value = ["customerId"], unique = true)]   // one ledger row per customer
+)
 data class KhataEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val partyName: String,
+    val customerId: Long,              // FK→customers (DB v3)
+    val partyName: String,             // denormalized for display
     val balance: Double = 0.0,         // positive = they owe us
     val lastUpdated: Long = System.currentTimeMillis()
 )
 ```
+NOTE: `KhataRepositoryImpl.adjust` resolves the party name → `customerId` via
+`CustomerRepository.resolveOrCreate` (idempotent) and upserts by `customerId`. The public
+`KhataRepository` API stays name-based, so `KhataScreen`/Assistant callers are unchanged.
 
 ### KhataTransactionEntity
 ```kotlin
