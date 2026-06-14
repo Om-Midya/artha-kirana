@@ -2,6 +2,7 @@ package com.artha.kirana.data.repository
 
 import com.artha.kirana.data.db.dao.SalesDao
 import com.artha.kirana.data.db.entity.SaleEntity
+import com.artha.kirana.domain.model.TopSellerRow
 import com.artha.kirana.domain.repository.SalesRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -15,4 +16,5 @@ class SalesRepositoryImpl @Inject constructor(
     override fun revenueBetween(start: Long, end: Long): Flow<Double> = dao.revenueBetween(start, end)
     override fun cashBetween(start: Long, end: Long): Flow<Double> = dao.cashBetween(start, end)
     override fun cogsBetween(start: Long, end: Long): Flow<Double> = dao.cogsBetween(start, end)
+    override suspend fun topSellers(start: Long, end: Long): List<TopSellerRow> = dao.topSellers(start, end)
 }

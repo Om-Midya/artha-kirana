@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.artha.kirana.data.db.entity.SaleEntity
+import com.artha.kirana.domain.model.TopSellerRow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,4 +36,11 @@ interface SalesDao {
             "WHERE s.type != 'repayment' AND s.timestamp BETWEEN :start AND :end",
     )
     fun cogsBetween(start: Long, end: Long): Flow<Double>
+
+    @Query(
+        "SELECT itemId, itemName, COALESCE(SUM(qtySold),0) AS qty, COALESCE(SUM(amount),0) AS revenue " +
+            "FROM sales WHERE type != 'repayment' AND timestamp BETWEEN :start AND :end " +
+            "GROUP BY itemId ORDER BY revenue DESC",
+    )
+    suspend fun topSellers(start: Long, end: Long): List<TopSellerRow>
 }
