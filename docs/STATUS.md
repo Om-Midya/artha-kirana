@@ -1,10 +1,17 @@
 # Artha Kirana — Status
 
-**Updated:** 2026-06-14 · **Branch:** `feat/analytics-chat` (analytics-in-chat + seeder, 15 commits, unmerged) atop merged `main` (Phase 0–2 + data-layer v3 + Assistant + edit + auto-price) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
+**Updated:** 2026-06-14 · **Branch:** `main` (everything below fast-forward-merged; `feat/analytics-chat` was +42 commits) · **Device:** iQOO 15 (`10BFBG0CEL001DB`)
 
-## ⚠️ ACTIVE PIVOT (2026-06-14): cloud LLM primary + local fallback + cloud OCR
+## ✅ SHIPPED & MERGED TO `main` (2026-06-14): cloud pivot + scan + Verge UI + agentic assistant + date-nav
 
-The on-device llama-server (Qwen 3B) is too flaky for the demo (cold-prefill timeouts → false "server offline", sampling wobble, dies between sessions). **Decision: cloud LLM (OpenRouter → Claude Haiku 4.5) as PRIMARY parser, local llama-server as FALLBACK, plus cloud-vision OCR for bills.** This is a deliberate demo-driven reversal of the "nothing leaves the phone" pitch (local fallback preserves an offline story). Reference = a colleague's working hybrid app at `~/Desktop/CrazyStuff/artha-kirana`. **Direction brief + open questions + integration design: `docs/superpowers/specs/2026-06-14-cloud-llm-ocr-direction.md`.** Next agent: brainstorm → spec → plan → build (NOT yet started). New-agent prompt: `docs/NEW-AGENT-PROMPT-cloud-llm.md`.
+Build-green (full unit suite passes, `assembleDebug` clean), device-verified on the iQOO. Highlights:
+- **Cloud LLM primary + local fallback.** `ChatClient` → `FallbackChatClient(CloudChatClient = OpenRouter/Claude Haiku 4.5, LlmHttpClient = local llama-server)`. Cloud-first; on error/timeout/blank-key/`FORCE_LOCAL_LLM` → local. Keys in gitignored `keys.properties` → BuildConfig.
+- **Cloud-vision OCR scan (Claude Opus 4.8).** Home SCAN = sales (customer-bill / day-scribble → ledger); Inventory SCAN CHALLAN = supplier bill → priced inventory restock. `CloudVisionClient`, `ImageUtils`, `LogPurchaseUseCase` (now sets sell price).
+- **Agentic Assistant.** Cloud tool-calling agent (`AssistantAgentUseCase`) over 8 read-only `ShopDataTools` + propose-sale/payment drafts; answers in Hindi/Hinglish **with inline charts/cards** (`AgentVisual`). Offline → old 6-intent classifier. Critical fix: `explicitNulls=false` on agent requests.
+- **Verge UI revamp** (canvas-black + mint/ultraviolet, Anton/Hanken/Space-Mono, flat hairlines) across all screens.
+- **Home date-navigator** (◄ date ▾ ► + calendar; revenue/entries scope to the selected day).
+
+Specs/plans: `docs/superpowers/specs|plans/2026-06-14-cloud-llm-ocr-*`. Memory: `artha-cloud-llm-pivot`, `artha-ui-design-system`, `artha-agentic-assistant`. **Owner gate (not blockers):** exercise real camera→cloud scan end-to-end; re-verify §18 + Assistant cloud, then airplane-mode/`FORCE_LOCAL_LLM` → local fallback.
 
 ## Progress
 
@@ -13,12 +20,14 @@ The on-device llama-server (Qwen 3B) is too flaky for the demo (cold-prefill tim
 | **Phase 0 — Foundation** | ✅ Done & device-verified |
 | **Phase 1 — Core sale loop** | ✅ Done & device-verified (incl. Task 1.7 §18 = 5/5) |
 | **Phase 2 — Inventory / Khata / P&L** | ✅ Done & merged to `main` (13/13 tasks, final review clean, unit tests green). Device-verified screens + record-payment + worker pipeline. Owner-verifying two §15 visuals (low-stock notification fire/clear; LLM-sale decrement/COGS). |
-| Phase 3 — Bill scanning (OCR) | 🤝 In progress by a collaborator — **not this agent's scope** (do not touch ML Kit/CameraX/BillParser). |
-| **Phase 4 — Voice + vernacular** | 🟢 Voice pipeline WORKING on-device. whisper.cpp v1.7.4 (arm64, `-O3`) + fine-tuned **whisper-hindi-small q5_1** → accurate Devanagari → `HindiNumbers` normalizer (number-words→digits) → Qwen with `json_schema` grammar → confirm card. ~2-3s. Hallucination on poor audio curbed (single_segment off + RMS silence gate). **Still TODO:** Hindi TTS "Hear summary", recording animation, vernacular toggle, `inputMethod="voice"`, Devanagari party-name vs romanized. |
-| Phase 5 — Market insights (Claude API) | ⬜ Not started (needs API key) |
-| Phase 6 — Demo hardening | ⬜ Not started |
-| **Assistant layer (thin slice)** | 🟢 Built on branch `feat/assistant-layer` (14/14 tasks, per-task spec+quality reviews, unit tests green, full `assembleDebug` clean, installed on iQOO). Conversational chat-thread tab (center protruding gold FAB) → stateless two-stage intent router (classify → intent-specific extractor) over existing use-cases. 3 intents: `log_sale`, `query_pnl`, `record_payment`. **Live intent classifier = 10/10 on-device** (`scripts/validate-intent-prompt.py` vs Qwen 3B). Inline confirm cards reuse `EditableEntryCard`; voice input reuses the whisper mic; replies text-only (TTS deferred). LLM is **preloaded when the Assistant screen opens** (`warmUpLlm` primes the intent system-prompt KV cache) so the first message is fast. **Awaiting human on-device UI walkthrough** (3 flows + voice + offline) before merge. Spec: `docs/superpowers/specs/2026-06-14-artha-assistant-design.md`; plan: `docs/superpowers/plans/2026-06-14-artha-assistant.md`. |
-| **Edit recent entries** | 🟢 Built on `feat/assistant-layer` (8/8 tasks, per-task TDD + reviews, full final unit suite green, installed on iQOO). Home "Recent entries" rows are tappable → bottom-sheet editor (reuses `EditableEntryCard`) → `EditSaleUseCase` reverses the original sale's inventory + khata effects and applies the edited ones (clean khata-history rewrite via `KhataRepository.reverseSaleEffect`), edit-in-place (same id/timestamp). `LogSaleUseCase` untouched except sharing `parseLeadingQty`. **Awaiting human on-device verification** (4 exit criteria: amount edit→revenue/P&L; credit amount edit→khata; qty edit→stock; type change→khata). Spec: `docs/superpowers/specs/2026-06-14-artha-edit-recent-entries-design.md`; plan: `docs/superpowers/plans/2026-06-14-artha-edit-recent-entries.md`. |
+| **Phase 3 — Bill/ledger scanning** | ✅ **DONE (cloud-vision, merged).** Replaced the old ML-Kit plan with **Claude Opus 4.8** OCR. Home SCAN (customer-bill→credit / day-scribble→ledger → `LogSaleUseCase`); Inventory SCAN CHALLAN (supplier bill → editable cost+sell price → `LogPurchaseUseCase`, restocks inventory). System-camera + FileProvider + iQOO cold-restart hardening. Device-verified renders; owner gate = real-photo end-to-end. |
+| **Phase 4 — Voice + vernacular** | 🟢 Voice pipeline WORKING on-device. whisper.cpp v1.7.4 (arm64, `-O3`) + fine-tuned **whisper-hindi-small q5_1**. Mic in Sale Entry + Assistant. **Still TODO:** Hindi TTS, recording animation, vernacular toggle. |
+| Phase 5 — Market insights (Claude API) | ⬜ Not built (the agentic Assistant + ShopDataTools largely covers "insights" now). |
+| Phase 6 — Demo hardening | 🟡 Partly — cloud removes the flaky-server risk; airplane-mode/`FORCE_LOCAL_LLM` fallback path exists; demo seeder present. |
+| **Assistant — now AGENTIC** | ✅ **Merged.** Upgraded from the 6-intent classifier to a **cloud tool-calling agent** (`AssistantAgentUseCase`, Haiku): 8 read-only `ShopDataTools` + `propose_sale`/`propose_payment` (→ confirm cards). Answers in Hindi/Hinglish **with inline bar-chart / stats-card visuals** (`AgentVisual` + `AgentVisualCard`). Offline → falls back to the on-device intent classifier. Device-verified (e.g. "sabse zyada udhar kiska" → list_customers → "Ramesh ₹2,135"; "is mahine kya bika" → top-sellers bar chart). |
+| **Verge UI revamp** | ✅ **Merged & device-verified.** Dark canvas + mint/ultraviolet/yellow/hot-pink, Anton/Hanken/Space-Mono fonts, flat hairline cards, money semantics. All screens. `ui/theme/{Color,Type,Theme,Components}`. |
+| **Home date-navigator** | ✅ **Merged & device-verified.** ◄ [date ▾] ► bar — step day / pick via calendar (≤ today); Home revenue + entries scope to the selected day. |
+| **Edit recent entries / data-layer v3 / auto-price / analytics** | ✅ Merged earlier this session (see below). |
 
 ## Data-layer restructure (in progress)
 
@@ -65,11 +74,11 @@ Original direction brief (superseded): `docs/superpowers/specs/2026-06-14-data-l
 
 ## Key decisions / deviations
 
-- **LLM = localhost HTTP** to `llama-server` (Qwen 2.5 3B) on `127.0.0.1:8080`, not in-app LiteRT/JNI. The server runs **on the phone** (the app hits phone-loopback — no Mac/tether at runtime). **`CLAUDE.md` §1 hard requirement: the server must run ON the iQOO, never on a tethered Mac.** Today it's *started* via an `adb shell` command, but the process is phone-side and survives unplugging. The **Phase 6 airplane-mode gate** (unplug, confirm a sale still parses) proves this; for a tether-free *start*, use Termux or a phone-side launcher. `adb forward` is used only by the Mac-side prompt-validation harness, never the app.
+- **LLM = CLOUD-FIRST (2026-06-14 pivot).** OpenRouter → Claude Haiku 4.5 (text) / Opus 4.8 (vision) is PRIMARY; the on-device `llama-server` (Qwen 2.5 3B, `127.0.0.1:8080`) is the automatic FALLBACK. Deliberate reversal of CLAUDE.md §1's "nothing leaves the phone" pitch — the local fallback preserves an offline story. Memory/spec: `artha-cloud-llm-pivot`, `docs/superpowers/specs/2026-06-14-cloud-llm-ocr-design.md`.
 - **AGP 9.0.1 → 8.13.0** (AGP 9 breaks Hilt/KSP/Compose).
 - **SQLCipher deferred** behind a swap-in seam in `DatabaseModule`.
 - **Vico (charts) deferred to Phase 2** — 3.1.0 needs Kotlin 2.3.x; pick a Kotlin-2.0-compatible version.
-- **Room DB is version 2** (`itemName` denormalized onto sales; `fallbackToDestructiveMigration`).
+- **Room DB is version 3** (customers table + FKs + price snapshots on sales; `fallbackToDestructiveMigration`).
 
 ## Known issues / follow-ups
 
